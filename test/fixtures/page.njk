@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+{% from "govuk-analytics-consent/macro.njk" import govukAnalyticsConsentHead, govukAnalyticsConsentNoscript, govukAnalyticsConsentBanner, govukAnalyticsConsentScripts %}
+<html lang="en" class="govuk-template">
+  <head>
+    <meta charset="utf-8">
+    <title>Example service</title>
+    {{ govukAnalyticsConsentHead(govukAnalyticsConsent) }}
+  </head>
+  <body class="govuk-template__body">
+    {{ govukAnalyticsConsentNoscript(govukAnalyticsConsent) }}
+    {{ govukAnalyticsConsentBanner(govukAnalyticsConsent) }}
+    <main class="govuk-main-wrapper">
+      <h1 class="govuk-heading-l">Example service</h1>
+    </main>
+    {{ govukAnalyticsConsentScripts(govukAnalyticsConsent) }}
+  </body>
+</html>

@@ -1,0 +1,93 @@
+{
+  "name": "@transform-uk/govuk-analytics-consent",
+  "version": "0.1.0",
+  "description": "Near zero-configuration GOV.UK cookie consent banner, Google Tag Manager loading and Google Consent Mode integration for Node.js services",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TransformCore/govuk-analytics-consent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TransformCore/govuk-analytics-consent/issues"
+  },
+  "homepage": "https://github.com/TransformCore/govuk-analytics-consent#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./hapi": {
+      "types": "./dist/integrations/hapi.d.ts",
+      "import": "./dist/integrations/hapi.js"
+    },
+    "./express": {
+      "types": "./dist/integrations/express.d.ts",
+      "import": "./dist/integrations/express.js"
+    },
+    "./nunjucks": {
+      "types": "./dist/ui/template-path.d.ts",
+      "import": "./dist/ui/template-path.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src/ui/templates"
+  ],
+  "scripts": {
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "tsc -p tsconfig.build.json",
+    "build:client": "esbuild src/client/index.ts --bundle --format=iife --minify --target=es2017 --outfile=dist/client/consent.js",
+    "example:express": "npm run build && node examples/express/server.js",
+    "example:hapi": "npm run build && node examples/hapi/server.js",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test",
+    "typecheck": "tsc --noEmit",
+    "pretest": "npm run build:client",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "govuk-frontend": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "govuk-frontend": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@hapi/hapi": "^21.3.12",
+    "@hapi/inert": "^7.1.0",
+    "@hapi/vision": "^7.0.3",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "@types/nunjucks": "^3.2.6",
+    "@types/supertest": "^6.0.2",
+    "esbuild": "^0.24.0",
+    "express": "^4.21.2",
+    "govuk-frontend": "^5.11.2",
+    "jsdom": "^25.0.1",
+    "nunjucks": "^3.2.4",
+    "supertest": "^7.0.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "keywords": [
+    "govuk",
+    "defra",
+    "cookie-banner",
+    "consent-mode",
+    "google-tag-manager",
+    "hapi",
+    "express"
+  ]
+}

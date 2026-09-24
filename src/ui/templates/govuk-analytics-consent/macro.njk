@@ -1,0 +1,23 @@
+{#
+  Usage in your layout (context object is injected by registerGovUkAnalyticsConsent):
+
+    {% from "govuk-analytics-consent/macro.njk" import
+       govukAnalyticsConsentHead, govukAnalyticsConsentBanner,
+       govukAnalyticsConsentNoscript, govukAnalyticsConsentScripts %}
+
+    <head>{{ govukAnalyticsConsentHead(govukAnalyticsConsent) }}</head>
+    <body>
+      {{ govukAnalyticsConsentNoscript(govukAnalyticsConsent) }}
+      {{ govukAnalyticsConsentBanner(govukAnalyticsConsent) }}
+      ...
+      {{ govukAnalyticsConsentScripts(govukAnalyticsConsent) }}
+    </body>
+#}
+
+{% macro govukAnalyticsConsentHead(ctx) %}{{ (ctx.head if ctx else "") | safe }}{% endmacro %}
+
+{% macro govukAnalyticsConsentNoscript(ctx) %}{{ (ctx.noscript if ctx else "") | safe }}{% endmacro %}
+
+{% macro govukAnalyticsConsentBanner(ctx) %}{{ (ctx.banner if ctx else "") | safe }}{% endmacro %}
+
+{% macro govukAnalyticsConsentScripts(ctx) %}{{ (ctx.scripts if ctx else "") | safe }}{% endmacro %}
