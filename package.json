@@ -49,7 +49,7 @@
     "build:client": "esbuild src/client/index.ts --bundle --format=iife --minify --target=es2017 --outfile=dist/client/consent.js",
     "example:express": "npm run build && node examples/express/server.js",
     "example:hapi": "npm run build && node examples/hapi/server.js",
-    "prepack": "npm run build",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run typecheck && npm test",
     "typecheck": "tsc --noEmit",
     "pretest": "npm run build:client",
