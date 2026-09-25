@@ -60,7 +60,8 @@ export { buildViewModel } from './ui/view-model.js'
 export type { ConsentViewModel } from './ui/view-model.js'
 export {
   govukAnalyticsConsentTemplatePath,
-  MACRO_IMPORT_PATH
+  MACRO_IMPORT_PATH,
+  PAGE_TEMPLATE_IMPORT_PATH
 } from './ui/template-path.js'
 export type {
   ConsentState,

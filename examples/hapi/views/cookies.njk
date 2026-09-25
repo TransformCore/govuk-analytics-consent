@@ -1,20 +1,37 @@
-<!DOCTYPE html>
-{% from "govuk-analytics-consent/macro.njk" import govukAnalyticsConsentHead, govukAnalyticsConsentNoscript, govukAnalyticsConsentCookiesPage, govukAnalyticsConsentScripts %}
-<html lang="en" class="govuk-template">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Cookies - Example service</title>
-    <link rel="stylesheet" href="/govuk-frontend/govuk-frontend.min.css">
-    {{ govukAnalyticsConsentHead(govukAnalyticsConsent) }}
-  </head>
-  <body class="govuk-template__body">
-    {{ govukAnalyticsConsentNoscript(govukAnalyticsConsent) }}
-    <div class="govuk-width-container">
-      <main class="govuk-main-wrapper">
-        {{ govukAnalyticsConsentCookiesPage(govukAnalyticsConsent) }}
-      </main>
-    </div>
-    {{ govukAnalyticsConsentScripts(govukAnalyticsConsent) }}
-  </body>
-</html>
+{% extends "govuk-analytics-consent/template.njk" %}
+{% from "govuk-analytics-consent/macro.njk" import govukAnalyticsConsentCookiesPage %}
+{% from "govuk/components/footer/macro.njk" import govukFooter %}
+
+{% set assetPath = "/govuk-frontend/assets" %}
+
+{% block pageTitle %}Cookies - Example service{% endblock %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="/govuk-frontend/govuk-frontend.min.css">
+{% endblock %}
+
+{% block content %}
+  {{ govukAnalyticsConsentCookiesPage(govukAnalyticsConsent) }}
+{% endblock %}
+
+{% block footer %}
+  {{ govukFooter({
+    meta: {
+      items: [
+        {
+          href: "/cookies",
+          text: "Cookies"
+        }
+      ]
+    }
+  }) }}
+{% endblock %}
+
+{% block bodyEnd %}
+  {{ super() }}
+  <script type="module">
+    import { initAll } from '/govuk-frontend/govuk-frontend.min.js'
+    initAll()
+  </script>
+{% endblock %}

@@ -50,28 +50,96 @@ nunjucks.configure([govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-fro
 registerGovUkAnalyticsConsent(app, { serviceName: 'Apply for a licence' })
 ```
 
-### Layout
+### GOV.UK page template
+
+If your views use the GOV.UK Frontend page template, extend the package template instead of
+`govuk/template.njk`:
 
 ```njk
+{% extends "govuk-analytics-consent/template.njk" %}
+
+{% block pageTitle %}Apply for a licence{% endblock %}
+
+{% block content %}
+  <h1 class="govuk-heading-xl">Apply for a licence</h1>
+{% endblock %}
+```
+
+The package template extends `govuk/template.njk` and automatically adds the consent head markup,
+noscript fallback, cookie banner and browser script to the appropriate GOV.UK template blocks.
+
+If your view overrides `head`, `bodyStart` or `bodyEnd`, call `super()` to retain the automatically
+added consent content. For example:
+
+```njk
+{% extends "govuk-analytics-consent/template.njk" %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="/stylesheets/application.css">
+{% endblock %}
+
+{% block bodyStart %}
+  {{ super() }}
+  {# Other content at the start of the body #}
+{% endblock %}
+
+{% block bodyEnd %}
+  {{ super() }}
+  <script type="module" src="/javascripts/application.js"></script>
+{% endblock %}
+```
+
+Remove any cookie banner already rendered in `bodyStart`; the package template supplies it.
+
+### Update your own GOV.UK template
+
+If you want to keep extending `govuk/template.njk` directly, add the existing macros to these
+blocks:
+
+| GOV.UK block | Consent content |
+| --- | --- |
+| `head` | `govukAnalyticsConsentHead` |
+| `bodyStart` | `govukAnalyticsConsentNoscript`, then `govukAnalyticsConsentBanner` |
+| `bodyEnd` | `govukAnalyticsConsentScripts` |
+
+For example, a customised GOV.UK page template should include:
+
+```njk
+{% extends "govuk/template.njk" %}
 {% from "govuk-analytics-consent/macro.njk" import
    govukAnalyticsConsentHead, govukAnalyticsConsentNoscript,
    govukAnalyticsConsentBanner, govukAnalyticsConsentScripts %}
 
-<head>
+{% block head %}
+  {{ super() }}
   {{ govukAnalyticsConsentHead(govukAnalyticsConsent) }}
-</head>
-<body>
+  <link rel="stylesheet" href="/stylesheets/application.css">
+{% endblock %}
+
+{% block bodyStart %}
   {{ govukAnalyticsConsentNoscript(govukAnalyticsConsent) }}
   {{ govukAnalyticsConsentBanner(govukAnalyticsConsent) }}
-  ...
+  {{ super() }}
+{% endblock %}
+
+{% block bodyEnd %}
+  {{ super() }}
   {{ govukAnalyticsConsentScripts(govukAnalyticsConsent) }}
-</body>
+  <script type="module" src="/javascripts/application.js"></script>
+{% endblock %}
 ```
+
+Calling `super()` preserves content supplied by the parent template. Keep the head macro before any
+analytics scripts that depend on consent defaults. As with the package template, replace an existing
+cookie banner in `bodyStart` rather than rendering both banners.
 
 `govukAnalyticsConsent` is injected into the view context by `registerGovUkAnalyticsConsent`
 (Hapi view responses, Express `res.locals`). Runnable examples are in [examples](examples).
 
-Not using Nunjucks? The same HTML is available directly:
+For a standalone Nunjucks layout that does not extend the GOV.UK page template, use the same macros
+directly in its `<head>` and `<body>` elements. Not using Nunjucks? The same HTML is available
+directly:
 
 ```js
 const { head, noscript, banner, cookiesPage, scripts } = res.locals.govukAnalyticsConsent
@@ -85,7 +153,7 @@ All optional.
 | --- | --- | --- |
 | `gtmContainerId` | `process.env.GTM_CONTAINER_ID` | Must match `GTM-XXXXXXX`; omitted means the service runs un-instrumented |
 | `cookieName` | `cookies_policy` | |
-| `cookieVersion` | `1` | Bumping it re-prompts every user |
+| `cookieVersion` | `1` | Bumping it re-prompts every user. Use this if you need to ask for new consent. Details are in the [Cookies page design pattern](https://design-system.service.gov.uk/patterns/cookies-page/#keeping-your-cookies-page-up-to-date-and-asking-for-new-consent) |
 | `routePrefix` | `/govuk-analytics-consent` | |
 | `cookiesPageUrl` | none | Renders the banner's "View cookies" link; same-origin paths only |
 | `consentWaitForUpdate` | `500` | Consent Mode `wait_for_update` in ms; `false` omits it |
@@ -165,11 +233,15 @@ Any malformed, tampered or out-of-date cookie degrades to "no choice made" and r
 
 The [GOV.UK cookies-page pattern](https://design-system.service.gov.uk/patterns/cookies-page/)
 is available as a fragment, the same way the banner is — mount your own route/view and embed it
-in your layout:
+in the `content` block of your view:
 
 ```njk
+{% extends "govuk-analytics-consent/template.njk" %}
 {% from "govuk-analytics-consent/macro.njk" import govukAnalyticsConsentCookiesPage %}
-{{ govukAnalyticsConsentCookiesPage(govukAnalyticsConsent) }}
+
+{% block content %}
+  {{ govukAnalyticsConsentCookiesPage(govukAnalyticsConsent) }}
+{% endblock %}
 ```
 
 It lists every configured category with a table of its cookies and, under a "Change your cookie

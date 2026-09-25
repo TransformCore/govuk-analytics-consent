@@ -1,0 +1,18 @@
+{% extends "govuk/template.njk" %}
+{% from "govuk-analytics-consent/macro.njk" import govukAnalyticsConsentHead, govukAnalyticsConsentNoscript, govukAnalyticsConsentBanner, govukAnalyticsConsentScripts %}
+
+{% block head %}
+  {{ super() }}
+  {{ govukAnalyticsConsentHead(govukAnalyticsConsent) }}
+{% endblock %}
+
+{% block bodyStart %}
+  {{ govukAnalyticsConsentNoscript(govukAnalyticsConsent) }}
+  {{ govukAnalyticsConsentBanner(govukAnalyticsConsent) }}
+  {{ super() }}
+{% endblock %}
+
+{% block bodyEnd %}
+  {{ super() }}
+  {{ govukAnalyticsConsentScripts(govukAnalyticsConsent) }}
+{% endblock %}
