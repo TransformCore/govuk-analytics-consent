@@ -104,7 +104,7 @@ export function registerHapi(
           currentPath,
           returnTo: returnUrl !== null ? safeInternalPath(returnUrl, currentPath) : undefined,
           cookiesSaved: readQueryParam(currentPath, 'cookies-updated') === 'true',
-          nonce: options.getNonce?.(request) ?? null
+          nonce: requestNonce(options, request)
         })
       }
     }
@@ -123,6 +123,16 @@ export const govukAnalyticsConsentPlugin: HapiPlugin = {
 }
 
 export default govukAnalyticsConsentPlugin
+
+function requestNonce(options: GovUkAnalyticsConsentOptions, request: any): string | null {
+  if (options.getNonce !== undefined) {
+    return options.getNonce(request) ?? null
+  }
+
+  const nonce = request.plugins?.blankie?.nonces?.script
+
+  return typeof nonce === 'string' && nonce !== '' ? nonce : null
+}
 
 function cookieSettings(resolved: ResolvedOptions): Record<string, unknown> {
   return {

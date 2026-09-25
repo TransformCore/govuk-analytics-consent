@@ -69,6 +69,8 @@ export {
   hasChoice
 } from './consent/state.js'
 export { buildConsentDefault, buildConsentUpdate } from './gtm/consent-mode.js'
+export { googleAnalyticsCspDirectives } from './gtm/csp.js'
+export type { GoogleAnalyticsCspDirectives } from './gtm/csp.js'
 export {
   renderConsentHead,
   renderConsentNoscript,

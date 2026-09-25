@@ -58,6 +58,72 @@ Hapi has a native plugin contract, so its adapter can be passed directly to `ser
 Express has no equivalent plugin contract; `registerGovUkAnalyticsConsent(app, options)` is the
 equivalent one-call integration and installs its middleware and routes on the application.
 
+### Content Security Policy
+
+The package exports `googleAnalyticsCspDirectives`, containing the additional origins required by
+its GTM and Google Analytics integration. Merge these into your service's existing policy; the
+package does not replace or mutate CSP headers because tags configured inside your GTM container
+may require further origins.
+
+For Hapi services using [Blankie](https://github.com/nlf/blankie), map the standard directive names
+to Blankie's option names:
+
+```js
+import Blankie from 'blankie'
+import consentPlugin from '@transform-uk/govuk-analytics-consent/hapi'
+import { googleAnalyticsCspDirectives as analyticsCsp } from '@transform-uk/govuk-analytics-consent'
+
+await server.register({
+  plugin: Blankie,
+  options: {
+    generateNonces: true,
+    scriptSrc: ['self', ...analyticsCsp['script-src']],
+    connectSrc: ['self', ...analyticsCsp['connect-src']],
+    imgSrc: ['self', ...analyticsCsp['img-src']],
+    frameSrc: analyticsCsp['frame-src']
+  }
+})
+
+await server.register({ plugin: consentPlugin })
+```
+
+The Hapi plugin automatically uses `request.plugins.blankie.nonces.script`. An explicit `getNonce`
+option takes precedence if your service obtains its nonce another way.
+
+For Express with Helmet, generate one nonce per response and share it with Helmet and this package:
+
+```js
+import crypto from 'node:crypto'
+import helmet from 'helmet'
+import {
+  googleAnalyticsCspDirectives as analyticsCsp,
+  registerGovUkAnalyticsConsent
+} from '@transform-uk/govuk-analytics-consent'
+
+app.use((req, res, next) => {
+  res.locals.cspNonce = crypto.randomBytes(16).toString('base64')
+  next()
+})
+
+app.use(helmet.contentSecurityPolicy({
+  directives: {
+    scriptSrc: ["'self'", (_req, res) => `'nonce-${res.locals.cspNonce}'`, ...analyticsCsp['script-src']],
+    connectSrc: ["'self'", ...analyticsCsp['connect-src']],
+    imgSrc: ["'self'", ...analyticsCsp['img-src']],
+    frameSrc: analyticsCsp['frame-src']
+  }
+}))
+
+registerGovUkAnalyticsConsent(app, {
+  getNonce: (_req) => _req.res.locals.cspNonce
+})
+```
+
+Nonce support avoids `'unsafe-inline'`. The generated GTM bootstrap also propagates the nonce to
+the remote script it creates, following Google's CSP guidance. Blankie users may still need the
+published GOV.UK Frontend script hash in `scriptSrc`; that hash belongs to GOV.UK Frontend rather
+than this package.
+
 ### GOV.UK page template
 
 If your views use the GOV.UK Frontend page template, extend the package template instead of
@@ -172,7 +238,7 @@ All optional.
 | `includeDefaultCookies` | `true` | Set to `false` to omit the built-in consent-cookie and GA rows entirely |
 | `secureCookie` | `NODE_ENV === 'production'` | |
 | `cookieMaxAge` | 1 year (seconds) | |
-| `getNonce` | none | `(request) => string` — applied to every injected `<script>` for CSP |
+| `getNonce` | Blankie's script nonce in Hapi; otherwise none | `(request) => string` — applied to every injected `<script>` for CSP; an explicit callback overrides automatic Blankie detection |
 
 ### Additional Consent Mode categories
 

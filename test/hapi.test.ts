@@ -36,6 +36,13 @@ beforeEach(async () => {
     handler: (_request, h) => h.view('page.njk')
   })
 
+  server.ext('onPreAuth', (request, h) => {
+    (request.plugins as Record<string, unknown>).blankie = {
+      nonces: { script: 'blankie-nonce' }
+    }
+    return h.continue
+  })
+
   await server.register({
     plugin: govukAnalyticsConsentPlugin,
     options: { gtmContainerId: 'GTM-ABC123' }
@@ -157,6 +164,12 @@ describe('hapi integration', () => {
     expect(response.result).toContain("gtag('consent','default'")
     expect(response.result).toContain('govuk-cookie-banner')
     expect(response.result).toContain('/govuk-analytics-consent/consent.js')
+  })
+
+  it('uses a Blankie-generated script nonce by default', async () => {
+    const response = await server.inject('/start')
+
+    expect(response.result).toContain('nonce="blankie-nonce"')
   })
 
   it('omits the banner once a choice has been stored', async () => {

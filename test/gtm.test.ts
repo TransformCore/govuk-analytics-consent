@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildConsentDefault, buildConsentUpdate } from '../src/gtm/consent-mode.js'
+import { googleAnalyticsCspDirectives } from '../src/gtm/csp.js'
 import { gtmLoaderSnippet, gtmNoscriptSnippet } from '../src/gtm/loader.js'
 import { consentDefaultSnippet, headSnippet } from '../src/gtm/snippets.js'
 import {
@@ -112,8 +113,31 @@ describe('gtmLoaderSnippet', () => {
     expect(gtmNoscriptSnippet('GTM-ABC123')).toContain('id=GTM-ABC123')
   })
 
+  it('propagates a CSP nonce to the dynamically loaded GTM script', () => {
+    expect(gtmLoaderSnippet('GTM-ABC123')).toContain("j.setAttribute('nonce'")
+  })
+
   it('refuses to render an injected container id', () => {
     expect(() => gtmLoaderSnippet("GTM-A';alert(1);//")).toThrow(/Refusing to render/)
+  })
+})
+
+describe('googleAnalyticsCspDirectives', () => {
+  it('lists the additional sources required by GTM and Google Analytics', () => {
+    expect(googleAnalyticsCspDirectives).toEqual({
+      'script-src': ['https://www.googletagmanager.com'],
+      'connect-src': [
+        'https://www.googletagmanager.com',
+        'https://*.google-analytics.com',
+        'https://*.analytics.google.com',
+        'https://www.google.com'
+      ],
+      'img-src': [
+        'https://www.googletagmanager.com',
+        'https://*.google-analytics.com'
+      ],
+      'frame-src': ['https://www.googletagmanager.com']
+    })
   })
 })
 
