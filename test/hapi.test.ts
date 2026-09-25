@@ -4,6 +4,7 @@ import nunjucks from 'nunjucks'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { registerGovUkAnalyticsConsent } from '../src/index.js'
 import { govukAnalyticsConsentTemplatePath } from '../src/ui/template-path.js'
+import type { ConsentRequestState } from '../src/integrations/core.js'
 
 let server: Hapi.Server
 
@@ -37,6 +38,21 @@ beforeEach(async () => {
 
   registerGovUkAnalyticsConsent(server, { gtmContainerId: 'GTM-ABC123' })
 
+  server.route({
+    method: 'GET',
+    path: '/request-consent/{category}',
+    handler: (request) => {
+      const consent = (request.app as { govukAnalyticsConsent: ConsentRequestState })
+        .govukAnalyticsConsent
+
+      return {
+        hasChoice: consent.hasChoice,
+        accepted: consent.isCategoryAccepted(request.params.category as string),
+        state: consent.state
+      }
+    }
+  })
+
   await server.initialize()
 })
 
@@ -45,6 +61,32 @@ afterEach(async () => {
 })
 
 describe('hapi integration', () => {
+  it('exposes consent state to request handlers', async () => {
+    const withoutChoice = await server.inject('/request-consent/analytics')
+    const essential = await server.inject('/request-consent/essential')
+    const unknown = await server.inject('/request-consent/unknown')
+    const consent = encodeURIComponent(
+      JSON.stringify({
+        version: 1,
+        categories: { analytics: true },
+        updatedAt: new Date().toISOString()
+      })
+    )
+    const accepted = await server.inject({
+      url: '/request-consent/analytics',
+      headers: { cookie: `govuk_analytics_consent=${consent}` }
+    })
+
+    expect(JSON.parse(withoutChoice.payload)).toMatchObject({
+      hasChoice: false,
+      accepted: false,
+      state: { categories: null }
+    })
+    expect(JSON.parse(essential.payload)).toMatchObject({ hasChoice: false, accepted: true })
+    expect(JSON.parse(unknown.payload)).toMatchObject({ hasChoice: false, accepted: false })
+    expect(JSON.parse(accepted.payload)).toMatchObject({ hasChoice: true, accepted: true })
+  })
+
   it('serves the browser bundle', async () => {
     const response = await server.inject('/govuk-analytics-consent/consent.js')
 

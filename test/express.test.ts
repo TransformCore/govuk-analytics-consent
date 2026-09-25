@@ -4,6 +4,7 @@ import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { registerGovUkAnalyticsConsent } from '../src/index.js'
 import { govukAnalyticsConsentTemplatePath } from '../src/ui/template-path.js'
+import type { ConsentRequestState } from '../src/integrations/core.js'
 
 let app: express.Express
 
@@ -18,9 +19,41 @@ beforeEach(() => {
   registerGovUkAnalyticsConsent(app, { gtmContainerId: 'GTM-ABC123' })
 
   app.get('/start', (_req, res) => res.render('page.njk'))
+  app.get('/request-consent/:category', (req, res) => {
+    const consent = (req as typeof req & { govukAnalyticsConsent: ConsentRequestState })
+      .govukAnalyticsConsent
+
+    res.json({
+      hasChoice: consent.hasChoice,
+      accepted: consent.isCategoryAccepted(req.params.category),
+      state: consent.state
+    })
+  })
 })
 
 describe('express integration', () => {
+  it('exposes consent state to downstream request handlers', async () => {
+    const withoutChoice = await request(app).get('/request-consent/analytics')
+    const essential = await request(app).get('/request-consent/essential')
+    const unknown = await request(app).get('/request-consent/unknown')
+    const consent = encodeURIComponent(
+      JSON.stringify({
+        version: 1,
+        categories: { analytics: true },
+        updatedAt: new Date().toISOString()
+      })
+    )
+    const accepted = await request(app)
+      .get('/request-consent/analytics')
+      .set('cookie', `govuk_analytics_consent=${consent}`)
+
+    expect(withoutChoice.body).toMatchObject({ hasChoice: false, accepted: false })
+    expect(withoutChoice.body.state.categories).toBeNull()
+    expect(essential.body).toMatchObject({ hasChoice: false, accepted: true })
+    expect(unknown.body).toMatchObject({ hasChoice: false, accepted: false })
+    expect(accepted.body).toMatchObject({ hasChoice: true, accepted: true })
+  })
+
   it('serves the browser bundle', async () => {
     const response = await request(app).get('/govuk-analytics-consent/consent.js')
 

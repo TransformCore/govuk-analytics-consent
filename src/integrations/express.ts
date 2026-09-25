@@ -1,6 +1,11 @@
 import { resolveOptions } from '../consent/options.js'
 import { clientAsset } from './client-asset.js'
-import { consentRoutePaths, createConsentContext, handleConsentPost } from './core.js'
+import {
+  consentRoutePaths,
+  createConsentContext,
+  createConsentRequestState,
+  handleConsentPost
+} from './core.js'
 import { readQueryParam, safeInternalPath } from '../shared/url.js'
 import type { ConsentContext } from './core.js'
 import type { GovUkAnalyticsConsentOptions, ResolvedOptions } from '../consent/types.js'
@@ -34,6 +39,9 @@ export function registerExpress(
 
   app.use((req: any, res: any, next: () => void) => {
     let context: ConsentContext | null = null
+    const requestConsent = createConsentRequestState(resolved, req.headers?.cookie)
+
+    req.govukAnalyticsConsent = requestConsent
 
     Object.defineProperty(res.locals, 'govukAnalyticsConsent', {
       configurable: true,
@@ -43,7 +51,7 @@ export function registerExpress(
         const returnUrl = readQueryParam(currentPath, 'returnUrl')
 
         context ??= createConsentContext(resolved, {
-          cookieHeader: req.headers?.cookie,
+          consent: requestConsent.state,
           currentPath,
           returnTo: returnUrl !== null ? safeInternalPath(returnUrl, currentPath) : undefined,
           cookiesSaved: readQueryParam(currentPath, 'cookies-updated') === 'true',

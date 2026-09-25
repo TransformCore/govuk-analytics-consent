@@ -49,7 +49,7 @@ describe('browser consent manager', () => {
     expect(window.dataLayer?.[0]).toEqual([
       'consent',
       'update',
-      { analytics_storage: 'granted' }
+      { security_storage: 'granted', analytics_storage: 'granted' }
     ])
   })
 
@@ -60,7 +60,11 @@ describe('browser consent manager', () => {
     expect(readConsent(options.cookieName, options.cookieVersion).categories).toEqual({
       analytics: false
     })
-    expect(window.dataLayer?.[0]).toEqual(['consent', 'update', { analytics_storage: 'denied' }])
+    expect(window.dataLayer?.[0]).toEqual([
+      'consent',
+      'update',
+      { security_storage: 'granted', analytics_storage: 'denied' }
+    ])
   })
 
   it('emits a dataLayer event so GTM tags can trigger on the change', () => {
@@ -80,7 +84,11 @@ describe('browser consent manager', () => {
     mount()
     click('accept')
 
-    expect(calls[0]).toEqual(['consent', 'update', { analytics_storage: 'granted' }])
+    expect(calls[0]).toEqual([
+      'consent',
+      'update',
+      { security_storage: 'granted', analytics_storage: 'granted' }
+    ])
   })
 
   it('swaps the prompt for the matching confirmation and focuses it', () => {
@@ -112,7 +120,7 @@ describe('browser consent manager', () => {
     expect(window.dataLayer?.[0]).toEqual([
       'consent',
       'update',
-      { analytics_storage: 'granted' }
+      { security_storage: 'granted', analytics_storage: 'granted' }
     ])
   })
 
@@ -137,7 +145,7 @@ describe('cookies page', () => {
     expect(window.dataLayer?.[0]).toEqual([
       'consent',
       'update',
-      { analytics_storage: 'granted' }
+      { security_storage: 'granted', analytics_storage: 'granted' }
     ])
   })
 })

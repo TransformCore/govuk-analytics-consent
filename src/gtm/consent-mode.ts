@@ -16,7 +16,7 @@ export interface ConsentDefaultPayload {
  */
 const STANDARD_DENIED_SIGNALS = ['ad_storage', 'ad_user_data', 'ad_personalization', 'analytics_storage']
 
-/** Every standard signal, plus any declared by a non-essential category, denied until a choice is made. */
+/** Every standard signal, plus any declared optional signal, denied until a choice is made. */
 export function buildConsentDefault(
   categories: ConsentModeCategory[],
   waitForUpdate: number | null
@@ -24,12 +24,10 @@ export function buildConsentDefault(
   const signals = new Set(STANDARD_DENIED_SIGNALS)
 
   for (const category of categories) {
-    if (category.essential === true) {
-      continue
-    }
-
-    for (const signal of category.gtagSignals ?? []) {
-      signals.add(signal)
+    if (category.essential !== true) {
+      for (const signal of category.gtagSignals ?? []) {
+        signals.add(signal)
+      }
     }
   }
 
@@ -39,6 +37,14 @@ export function buildConsentDefault(
     payload[signal] = 'denied'
   }
 
+  for (const category of categories) {
+    if (category.essential === true) {
+      for (const signal of category.gtagSignals ?? []) {
+        payload[signal] = 'granted'
+      }
+    }
+  }
+
   if (waitForUpdate !== null && Number.isFinite(waitForUpdate) && waitForUpdate > 0) {
     payload.wait_for_update = Math.floor(waitForUpdate)
   }
@@ -46,7 +52,7 @@ export function buildConsentDefault(
   return payload
 }
 
-/** Maps every non-essential category's signals to granted/denied per the stored consent state. */
+/** Maps optional signals to the stored choice and essential signals to granted. */
 export function buildConsentUpdate(
   categories: ConsentModeCategory[],
   state: ConsentState
@@ -54,11 +60,7 @@ export function buildConsentUpdate(
   const payload: ConsentPayload = {}
 
   for (const category of categories) {
-    if (category.essential === true) {
-      continue
-    }
-
-    const granted = isCategoryAccepted(state, category)
+    const granted = category.essential === true || isCategoryAccepted(state, category)
 
     for (const signal of category.gtagSignals ?? []) {
       payload[signal] = granted ? 'granted' : 'denied'

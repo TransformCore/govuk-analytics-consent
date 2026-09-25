@@ -2,7 +2,12 @@ import Hapi from '@hapi/hapi'
 import Inert from '@hapi/inert'
 import Vision from '@hapi/vision'
 import nunjucks from 'nunjucks'
-import { registerGovUkAnalyticsConsent, govukAnalyticsConsentTemplatePath } from '../../dist/index.js'
+import {
+  defaultCategories,
+  personalizationCategory,
+  registerGovUkAnalyticsConsent,
+  govukAnalyticsConsentTemplatePath
+} from '../../dist/index.js'
 
 const server = Hapi.server({ port: 3000, host: 'localhost' })
 
@@ -30,13 +35,20 @@ server.views({
 })
 
 // Reads GTM_CONTAINER_ID from the environment; the consent cookie and GA rows are
-// documented automatically, so only the service's own session cookie needs adding.
+// documented automatically. This example also enables personalization consent.
 registerGovUkAnalyticsConsent(server, {
   serviceName: 'Example service',
   cookiesPageUrl: '/cookies',
+  categories: [...defaultCategories, personalizationCategory],
   cookies: [
-    { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' }
-  ],
+    { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
+    {
+      name: 'example_preferences',
+      categoryId: 'personalization',
+      purpose: 'Remembers your display preferences',
+      expiry: '1 year'
+    }
+  ]
 })
 
 server.route({
@@ -54,7 +66,16 @@ server.route({
 server.route({
   method: 'GET',
   path: '/',
-  handler: (_request, h) => h.view('index.njk')
+  handler: (request, h) => {
+    const consent = request.app.govukAnalyticsConsent
+    const personalizationMessage = consent.isCategoryAccepted('personalization')
+      ? 'Personalisation cookies are enabled. This page can use your saved display preferences.'
+      : consent.hasChoice
+        ? 'Personalisation cookies are disabled. This page is using the default display settings.'
+        : 'You have not chosen your cookie preferences yet. This page is using the default display settings.'
+
+    return h.view('index.njk', { personalizationMessage })
+  }
 })
 
 server.route({

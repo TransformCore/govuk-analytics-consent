@@ -166,6 +166,38 @@ All optional.
 | `cookieMaxAge` | 1 year (seconds) | |
 | `getNonce` | none | `(request) => string` — applied to every injected `<script>` for CSP |
 
+### Additional Consent Mode categories
+
+The default categories are strictly necessary cookies and cookies that measure website use. The
+strictly necessary category grants `security_storage`; the analytics category controls
+`analytics_storage`.
+
+Three additional category presets are exported for services that use the corresponding Google
+Consent Mode signals. They are not enabled by default:
+
+| Export | Cookies-page title | Consent Mode signals |
+| --- | --- | --- |
+| `advertisingCategory` | Cookies that help with our communications and marketing | `ad_storage`, `ad_user_data`, `ad_personalization` |
+| `functionalityCategory` | Cookies that enable additional functionality | `functionality_storage` |
+| `personalizationCategory` | Cookies that remember your settings | `personalization_storage` |
+
+Enable all three alongside the defaults:
+
+```js
+import {
+  additionalConsentModeCategories,
+  defaultCategories,
+  registerGovUkAnalyticsConsent
+} from '@transform-uk/govuk-analytics-consent'
+
+registerGovUkAnalyticsConsent(app, {
+  categories: [...defaultCategories, ...additionalConsentModeCategories]
+})
+```
+
+Or import only the category presets the service needs. Tags should require the signals associated
+with their category in GTM so each preference actually controls whether those tags can run.
+
 ## Localised copy
 
 The library includes sensible English defaults, and you can override the copy for any locale. For a built-in Welsh set, import `welshMessages`:
@@ -221,6 +253,55 @@ interface ConsentState {
 ```
 
 Any malformed, tampered or out-of-date cookie degrades to "no choice made" and re-prompts.
+
+### Server-side consent state
+
+Registration exposes the parsed consent state to application handlers. In Express it is available
+on `req.govukAnalyticsConsent` for middleware and routes registered after
+`registerGovUkAnalyticsConsent`:
+
+```js
+app.get('/recommendations', (req, res) => {
+  const consent = req.govukAnalyticsConsent
+
+  if (!consent.isCategoryAccepted('personalization')) {
+    return res.render('recommendations-without-personalization.njk')
+  }
+
+  return res.render('recommendations.njk')
+})
+```
+
+Hapi exposes the same object through `request.app.govukAnalyticsConsent`:
+
+```js
+server.route({
+  method: 'GET',
+  path: '/recommendations',
+  handler: (request, h) => {
+    const consent = request.app.govukAnalyticsConsent
+
+    return consent.isCategoryAccepted('personalization')
+      ? h.view('recommendations.njk')
+      : h.view('recommendations-without-personalization.njk')
+  }
+})
+```
+
+The request value is a `ConsentRequestState`:
+
+```ts
+interface ConsentRequestState {
+  state: ConsentState
+  hasChoice: boolean
+  isCategoryAccepted(categoryId: string): boolean
+}
+```
+
+`hasChoice` distinguishes a user who has submitted preferences from one who has not. The category
+helper returns `true` for an accepted category and for strictly necessary categories, and `false`
+for rejected, undecided or unknown categories. `ConsentRequestState` is exported for TypeScript
+applications that augment their framework request type.
 
 ## Routes
 

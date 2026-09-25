@@ -2,18 +2,26 @@ import { describe, expect, it } from 'vitest'
 import { buildConsentDefault, buildConsentUpdate } from '../src/gtm/consent-mode.js'
 import { gtmLoaderSnippet, gtmNoscriptSnippet } from '../src/gtm/loader.js'
 import { consentDefaultSnippet, headSnippet } from '../src/gtm/snippets.js'
-import { analyticsCategory, essentialCategory } from '../src/consent/categories.js'
+import {
+  additionalConsentModeCategories,
+  advertisingCategory,
+  analyticsCategory,
+  essentialCategory,
+  functionalityCategory,
+  personalizationCategory
+} from '../src/consent/categories.js'
 import { createInitialState, withCategoryChoices } from '../src/consent/state.js'
 
 const categories = [essentialCategory, analyticsCategory]
 
 describe('consent mode payloads', () => {
-  it('denies every standard signal by default', () => {
+  it('denies optional signals and grants essential security storage by default', () => {
     expect(buildConsentDefault(categories, null)).toEqual({
       ad_storage: 'denied',
       ad_user_data: 'denied',
       ad_personalization: 'denied',
-      analytics_storage: 'denied'
+      analytics_storage: 'denied',
+      security_storage: 'granted'
     })
   })
 
@@ -39,7 +47,8 @@ describe('consent mode payloads', () => {
       ad_storage: 'denied',
       ad_user_data: 'denied',
       ad_personalization: 'denied',
-      analytics_storage: 'denied'
+      analytics_storage: 'denied',
+      security_storage: 'granted'
     })
   })
 
@@ -47,8 +56,49 @@ describe('consent mode payloads', () => {
     const accepted = withCategoryChoices(createInitialState(1), { analytics: true })
     const rejected = withCategoryChoices(createInitialState(1), { analytics: false })
 
-    expect(buildConsentUpdate(categories, accepted)).toEqual({ analytics_storage: 'granted' })
-    expect(buildConsentUpdate(categories, rejected)).toEqual({ analytics_storage: 'denied' })
+    expect(buildConsentUpdate(categories, accepted)).toEqual({
+      security_storage: 'granted',
+      analytics_storage: 'granted'
+    })
+    expect(buildConsentUpdate(categories, rejected)).toEqual({
+      security_storage: 'granted',
+      analytics_storage: 'denied'
+    })
+  })
+
+  it('provides opt-in presets for every additional Consent Mode category', () => {
+    expect(additionalConsentModeCategories).toEqual([
+      advertisingCategory,
+      functionalityCategory,
+      personalizationCategory
+    ])
+    expect(advertisingCategory.gtagSignals).toEqual([
+      'ad_storage',
+      'ad_user_data',
+      'ad_personalization'
+    ])
+    expect(functionalityCategory.gtagSignals).toEqual(['functionality_storage'])
+    expect(personalizationCategory.gtagSignals).toEqual(['personalization_storage'])
+  })
+
+  it('maps choices for all additional Consent Mode categories', () => {
+    const allCategories = [...categories, ...additionalConsentModeCategories]
+    const state = withCategoryChoices(createInitialState(1), {
+      analytics: true,
+      advertising: false,
+      functionality: true,
+      personalization: false
+    })
+
+    expect(buildConsentUpdate(allCategories, state)).toEqual({
+      security_storage: 'granted',
+      analytics_storage: 'granted',
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+      functionality_storage: 'granted',
+      personalization_storage: 'denied'
+    })
   })
 })
 

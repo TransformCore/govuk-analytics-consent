@@ -26,7 +26,16 @@ export const defaultMessages: ConsentMessages = {
   analyticsCategoryDescription:
     'We use Google Analytics to measure how you use the service so we can improve it based on user needs. ' +
     'We do not allow Google to use or share the data about how you use this site.',
-  defaultCookiePurpose: 'Saves your cookie consent settings.',
+  advertisingCategoryTitle: 'Cookies that help with our communications and marketing',
+  advertisingCategoryDescription:
+    'These cookies help us understand how well our communications and marketing work and make them more relevant.',
+  functionalityCategoryTitle: 'Cookies that enable additional functionality',
+  functionalityCategoryDescription:
+    'These cookies enable optional features that improve how the service works.',
+  personalizationCategoryTitle: 'Cookies that remember your settings',
+  personalizationCategoryDescription:
+    'These cookies remember choices you make so the service can provide features and content suited to you.',
+  defaultCookiePurpose: 'Saves your cookie consent settings',
   gaCookiePurpose: 'These help us count how many people visit the service by tracking if you’ve visited before',
   gaSessionCookiePurpose: 'Used by Google Analytics to find and track an individual session with your device',
   tableHeaderName: 'Name',
@@ -64,7 +73,16 @@ export const welshMessages: ConsentMessages = {
   analyticsCategoryDescription:
     'Rydym yn defnyddio Google Analytics i fesur sut rydych chi’n defnyddio’r gwasanaeth fel y gallwn ei wella yn seiliedig ar anghenion defnyddwyr. ' +
     'Nid ydym yn caniatáu i Google ddefnyddio neu rannu’r data am sut rydych chi’n defnyddio’r safle.',
-  defaultCookiePurpose: 'Yn cadw eich gosodiadau cwcis.',
+  advertisingCategoryTitle: 'Cwcis sy’n helpu gyda’n cyfathrebiadau a’n marchnata',
+  advertisingCategoryDescription:
+    'Mae’r cwcis hyn yn ein helpu i ddeall pa mor dda y mae ein cyfathrebiadau a’n marchnata yn gweithio ac i’w gwneud yn fwy perthnasol.',
+  functionalityCategoryTitle: 'Cwcis sy’n galluogi swyddogaethau ychwanegol',
+  functionalityCategoryDescription:
+    'Mae’r cwcis hyn yn galluogi nodweddion dewisol sy’n gwella sut mae’r gwasanaeth yn gweithio.',
+  personalizationCategoryTitle: 'Cwcis sy’n cofio eich gosodiadau',
+  personalizationCategoryDescription:
+    'Mae’r cwcis hyn yn cofio’r dewisiadau rydych yn eu gwneud fel y gall y gwasanaeth ddarparu nodweddion a chynnwys sy’n addas i chi.',
+  defaultCookiePurpose: 'Yn cadw eich gosodiadau cwcis',
   gaCookiePurpose: 'Defnyddir i wahaniaethu defnyddwyr.',
   gaSessionCookiePurpose: 'Defnyddir i gadw cyflwr sesiwn ar gyfer Google Analytics.',
   tableHeaderName: 'Enw',

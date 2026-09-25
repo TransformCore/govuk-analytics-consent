@@ -1,6 +1,11 @@
 import { resolveOptions } from '../consent/options.js'
 import { clientAsset } from './client-asset.js'
-import { consentRoutePaths, createConsentContext, handleConsentPost } from './core.js'
+import {
+  consentRoutePaths,
+  createConsentContext,
+  createConsentRequestState,
+  handleConsentPost
+} from './core.js'
 import { readQueryParam, safeInternalPath } from '../shared/url.js'
 import type { GovUkAnalyticsConsentOptions, ResolvedOptions } from '../consent/types.js'
 
@@ -68,6 +73,15 @@ export function registerHapi(
     }
   ])
 
+  server.ext('onPreAuth', (request: any, h: any) => {
+    request.app.govukAnalyticsConsent = createConsentRequestState(
+      resolved,
+      request.headers.cookie
+    )
+
+    return h.continue
+  })
+
   server.ext('onPreResponse', (request: any, h: any) => {
     const response = request.response
 
@@ -78,7 +92,7 @@ export function registerHapi(
       response.source.context = {
         ...(response.source.context ?? {}),
         govukAnalyticsConsent: createConsentContext(resolved, {
-          cookieHeader: request.headers.cookie,
+          consent: request.app.govukAnalyticsConsent.state,
           currentPath,
           returnTo: returnUrl !== null ? safeInternalPath(returnUrl, currentPath) : undefined,
           cookiesSaved: readQueryParam(currentPath, 'cookies-updated') === 'true',

@@ -1,5 +1,5 @@
 import { resolveOptions } from './consent/options.js'
-import { createConsentContext } from './integrations/core.js'
+import { createConsentContext, createConsentRequestState } from './integrations/core.js'
 import { isExpressApp, registerExpress } from './integrations/express.js'
 import { isHapiServer, registerHapi } from './integrations/hapi.js'
 import type { ExpressAppLike } from './integrations/express.js'
@@ -23,14 +23,29 @@ export function registerGovUkAnalyticsConsent(
   )
 }
 
-export { resolveOptions, createConsentContext, registerHapi, registerExpress }
+export {
+  resolveOptions,
+  createConsentContext,
+  createConsentRequestState,
+  registerHapi,
+  registerExpress
+}
 export { isHapiServer, isExpressApp }
 export type { HapiServerLike, ExpressAppLike }
-export type { ConsentContext, ContextInput } from './integrations/core.js'
+export type {
+  ConsentContext,
+  ConsentRequestState,
+  ContextInput
+} from './integrations/core.js'
 export {
+  advertisingCategory,
   analyticsCategory,
+  buildAdditionalConsentModeCategories,
   essentialCategory,
-  defaultCategories
+  functionalityCategory,
+  personalizationCategory,
+  defaultCategories,
+  additionalConsentModeCategories
 } from './consent/categories.js'
 export { defaultMessages, resolveMessages, welshMessages } from './consent/messages.js'
 export type { ConsentMessages } from './consent/types.js'

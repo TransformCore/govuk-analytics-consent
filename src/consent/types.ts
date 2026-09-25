@@ -54,6 +54,12 @@ export interface ConsentMessages {
   essentialCategoryDescription: string
   analyticsCategoryTitle: string
   analyticsCategoryDescription: string
+  advertisingCategoryTitle: string
+  advertisingCategoryDescription: string
+  functionalityCategoryTitle: string
+  functionalityCategoryDescription: string
+  personalizationCategoryTitle: string
+  personalizationCategoryDescription: string
   defaultCookiePurpose: string
   gaCookiePurpose: string
   gaSessionCookiePurpose: string

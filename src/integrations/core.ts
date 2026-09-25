@@ -1,5 +1,11 @@
 import { readConsentFromHeader, serialiseConsent } from '../consent/cookie.js'
-import { buildCategoryChoices, createInitialState, withCategoryChoices } from '../consent/state.js'
+import {
+  buildCategoryChoices,
+  createInitialState,
+  hasChoice,
+  isCategoryAccepted,
+  withCategoryChoices
+} from '../consent/state.js'
 import { appendQueryParam, safeInternalPath } from '../shared/url.js'
 import {
   renderConsentBanner,
@@ -21,6 +27,7 @@ export interface ConsentContext extends ConsentViewModel {
 
 export interface ContextInput {
   cookieHeader?: string | null
+  consent?: ConsentState
   currentPath?: string
   returnTo?: string
   cookiesSaved?: boolean
@@ -29,10 +36,16 @@ export interface ContextInput {
 
 export function createConsentContext(
   options: ResolvedOptions,
-  { cookieHeader, currentPath = '/', returnTo, cookiesSaved = false, nonce = null }: ContextInput = {}
+  { cookieHeader, consent, currentPath = '/', returnTo, cookiesSaved = false, nonce = null }: ContextInput = {}
 ): ConsentContext {
-  const consent = readConsentFromHeader(cookieHeader, options.cookieName, options.cookieVersion)
-  const viewModel = buildViewModel(options, { consent, currentPath, returnTo, cookiesSaved, nonce })
+  const resolvedConsent = consent ?? readConsentFromHeader(cookieHeader, options.cookieName, options.cookieVersion)
+  const viewModel = buildViewModel(options, {
+    consent: resolvedConsent,
+    currentPath,
+    returnTo,
+    cookiesSaved,
+    nonce
+  })
 
   return {
     ...viewModel,
@@ -41,6 +54,30 @@ export function createConsentContext(
     banner: renderConsentBanner(viewModel),
     cookiesPage: renderConsentCookiesPage(viewModel),
     scripts: renderConsentScripts(viewModel)
+  }
+}
+
+export interface ConsentRequestState {
+  state: ConsentState
+  hasChoice: boolean
+  isCategoryAccepted: (categoryId: string) => boolean
+}
+
+export function createConsentRequestState(
+  options: ResolvedOptions,
+  cookieHeader?: string | null
+): ConsentRequestState {
+  const state = readConsentFromHeader(cookieHeader, options.cookieName, options.cookieVersion)
+  const categories = new Map(options.categories.map((category) => [category.id, category]))
+
+  return {
+    state,
+    hasChoice: hasChoice(state),
+    isCategoryAccepted: (categoryId) => {
+      const category = categories.get(categoryId)
+
+      return category !== undefined && isCategoryAccepted(state, category)
+    }
   }
 }
 
