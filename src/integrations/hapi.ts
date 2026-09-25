@@ -17,6 +17,14 @@ export interface HapiServerLike {
   state?: (...args: any[]) => any
 }
 
+export interface HapiPlugin {
+  name: string
+  register: (
+    server: HapiServerLike,
+    options?: GovUkAnalyticsConsentOptions
+  ) => void
+}
+
 export function isHapiServer(target: unknown): target is HapiServerLike {
   const candidate = target as Partial<HapiServerLike> | null
 
@@ -106,6 +114,15 @@ export function registerHapi(
 
   return resolved
 }
+
+export const govukAnalyticsConsentPlugin: HapiPlugin = {
+  name: 'govuk-analytics-consent',
+  register: (server, options) => {
+    registerHapi(server, options)
+  }
+}
+
+export default govukAnalyticsConsentPlugin
 
 function cookieSettings(resolved: ResolvedOptions): Record<string, unknown> {
   return {

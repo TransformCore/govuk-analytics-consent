@@ -5,7 +5,7 @@ import nunjucks from 'nunjucks'
 import {
   defaultCategories,
   personalizationCategory,
-  registerGovUkAnalyticsConsent,
+  govukAnalyticsConsentPlugin,
   govukAnalyticsConsentTemplatePath
 } from '../../dist/index.js'
 
@@ -36,19 +36,22 @@ server.views({
 
 // Reads GTM_CONTAINER_ID from the environment; the consent cookie and GA rows are
 // documented automatically. This example also enables personalization consent.
-registerGovUkAnalyticsConsent(server, {
-  serviceName: 'Example service',
-  cookiesPageUrl: '/cookies',
-  categories: [...defaultCategories, personalizationCategory],
-  cookies: [
-    { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
-    {
-      name: 'example_preferences',
-      categoryId: 'personalization',
-      purpose: 'Remembers your display preferences',
-      expiry: '1 year'
-    }
-  ]
+await server.register({
+  plugin: govukAnalyticsConsentPlugin,
+  options: {
+    serviceName: 'Example service',
+    cookiesPageUrl: '/cookies',
+    categories: [...defaultCategories, personalizationCategory],
+    cookies: [
+      { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
+      {
+        name: 'example_preferences',
+        categoryId: 'personalization',
+        purpose: 'Remembers your display preferences',
+        expiry: '1 year'
+      }
+    ]
+  }
 })
 
 server.route({

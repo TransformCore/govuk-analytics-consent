@@ -30,12 +30,16 @@ GTM_CONTAINER_ID=GTM-XXXXXXX
 ### Hapi
 
 ```js
-import { registerGovUkAnalyticsConsent, govukAnalyticsConsentTemplatePath } from '@transform-uk/govuk-analytics-consent'
+import govukAnalyticsConsent from '@transform-uk/govuk-analytics-consent/hapi'
+import { govukAnalyticsConsentTemplatePath } from '@transform-uk/govuk-analytics-consent'
 
 // Add the package templates to your Nunjucks search paths.
 const searchPaths = [govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-frontend/dist', 'src/views']
 
-registerGovUkAnalyticsConsent(server, { serviceName: 'Apply for a licence' })
+await server.register({
+  plugin: govukAnalyticsConsent,
+  options: { serviceName: 'Apply for a licence' }
+})
 ```
 
 ### Express
@@ -49,6 +53,10 @@ nunjucks.configure([govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-fro
 
 registerGovUkAnalyticsConsent(app, { serviceName: 'Apply for a licence' })
 ```
+
+Hapi has a native plugin contract, so its adapter can be passed directly to `server.register()`.
+Express has no equivalent plugin contract; `registerGovUkAnalyticsConsent(app, options)` is the
+equivalent one-call integration and installs its middleware and routes on the application.
 
 ### GOV.UK page template
 

@@ -2,7 +2,7 @@ import Hapi from '@hapi/hapi'
 import Vision from '@hapi/vision'
 import nunjucks from 'nunjucks'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { registerGovUkAnalyticsConsent } from '../src/index.js'
+import govukAnalyticsConsentPlugin from '../src/integrations/hapi.js'
 import { govukAnalyticsConsentTemplatePath } from '../src/ui/template-path.js'
 import type { ConsentRequestState } from '../src/integrations/core.js'
 
@@ -36,7 +36,10 @@ beforeEach(async () => {
     handler: (_request, h) => h.view('page.njk')
   })
 
-  registerGovUkAnalyticsConsent(server, { gtmContainerId: 'GTM-ABC123' })
+  await server.register({
+    plugin: govukAnalyticsConsentPlugin,
+    options: { gtmContainerId: 'GTM-ABC123' }
+  })
 
   server.route({
     method: 'GET',

@@ -1,7 +1,11 @@
 import { resolveOptions } from './consent/options.js'
 import { createConsentContext, createConsentRequestState } from './integrations/core.js'
 import { isExpressApp, registerExpress } from './integrations/express.js'
-import { isHapiServer, registerHapi } from './integrations/hapi.js'
+import {
+  govukAnalyticsConsentPlugin,
+  isHapiServer,
+  registerHapi
+} from './integrations/hapi.js'
 import type { ExpressAppLike } from './integrations/express.js'
 import type { HapiServerLike } from './integrations/hapi.js'
 import type { GovUkAnalyticsConsentOptions, ResolvedOptions } from './consent/types.js'
@@ -28,10 +32,12 @@ export {
   createConsentContext,
   createConsentRequestState,
   registerHapi,
-  registerExpress
+  registerExpress,
+  govukAnalyticsConsentPlugin
 }
 export { isHapiServer, isExpressApp }
-export type { HapiServerLike, ExpressAppLike }
+export type { HapiPlugin, HapiServerLike } from './integrations/hapi.js'
+export type { ExpressAppLike }
 export type {
   ConsentContext,
   ConsentRequestState,
