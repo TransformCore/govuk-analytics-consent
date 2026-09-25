@@ -65,23 +65,23 @@ its GTM and Google Analytics integration. Merge these into your service's existi
 package does not replace or mutate CSP headers because tags configured inside your GTM container
 may require further origins.
 
-For Hapi services using [Blankie](https://github.com/nlf/blankie), map the standard directive names
-to Blankie's option names:
+For Hapi services using [Blankie](https://github.com/nlf/blankie),
+`withGoogleAnalyticsBlankieCsp` merges the additional sources into Blankie's options without
+mutating the original options or removing existing sources:
 
 ```js
 import Blankie from 'blankie'
 import consentPlugin from '@transform-uk/govuk-analytics-consent/hapi'
-import { googleAnalyticsCspDirectives as analyticsCsp } from '@transform-uk/govuk-analytics-consent'
+import { withGoogleAnalyticsBlankieCsp } from '@transform-uk/govuk-analytics-consent'
 
 await server.register({
   plugin: Blankie,
-  options: {
+  options: withGoogleAnalyticsBlankieCsp({
     generateNonces: true,
-    scriptSrc: ['self', ...analyticsCsp['script-src']],
-    connectSrc: ['self', ...analyticsCsp['connect-src']],
-    imgSrc: ['self', ...analyticsCsp['img-src']],
-    frameSrc: analyticsCsp['frame-src']
-  }
+    scriptSrc: ['self'],
+    connectSrc: ['self'],
+    imgSrc: ['self']
+  })
 })
 
 await server.register({ plugin: consentPlugin })
@@ -90,14 +90,15 @@ await server.register({ plugin: consentPlugin })
 The Hapi plugin automatically uses `request.plugins.blankie.nonces.script`. An explicit `getNonce`
 option takes precedence if your service obtains its nonce another way.
 
-For Express with Helmet, generate one nonce per response and share it with Helmet and this package:
+For Express with Helmet, `withGoogleAnalyticsHelmetCsp` merges the extra sources into Helmet's
+directives. Generate one nonce per response and share it with Helmet and this package:
 
 ```js
 import crypto from 'node:crypto'
 import helmet from 'helmet'
 import {
-  googleAnalyticsCspDirectives as analyticsCsp,
-  registerGovUkAnalyticsConsent
+  registerGovUkAnalyticsConsent,
+  withGoogleAnalyticsHelmetCsp
 } from '@transform-uk/govuk-analytics-consent'
 
 app.use((req, res, next) => {
@@ -106,12 +107,11 @@ app.use((req, res, next) => {
 })
 
 app.use(helmet.contentSecurityPolicy({
-  directives: {
-    scriptSrc: ["'self'", (_req, res) => `'nonce-${res.locals.cspNonce}'`, ...analyticsCsp['script-src']],
-    connectSrc: ["'self'", ...analyticsCsp['connect-src']],
-    imgSrc: ["'self'", ...analyticsCsp['img-src']],
-    frameSrc: analyticsCsp['frame-src']
-  }
+  directives: withGoogleAnalyticsHelmetCsp({
+    scriptSrc: ["'self'", (_req, res) => `'nonce-${res.locals.cspNonce}'`],
+    connectSrc: ["'self'"],
+    imgSrc: ["'self'"]
+  })
 }))
 
 registerGovUkAnalyticsConsent(app, {

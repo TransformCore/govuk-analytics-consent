@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildConsentDefault, buildConsentUpdate } from '../src/gtm/consent-mode.js'
 import { googleAnalyticsCspDirectives } from '../src/gtm/csp.js'
+import { withGoogleAnalyticsBlankieCsp, withGoogleAnalyticsHelmetCsp } from '../src/index.js'
 import { gtmLoaderSnippet, gtmNoscriptSnippet } from '../src/gtm/loader.js'
 import { consentDefaultSnippet, headSnippet } from '../src/gtm/snippets.js'
 import {
@@ -138,6 +139,80 @@ describe('googleAnalyticsCspDirectives', () => {
       ],
       'frame-src': ['https://www.googletagmanager.com']
     })
+  })
+})
+
+describe('withGoogleAnalyticsBlankieCsp', () => {
+  it('adds the sources when no Blankie directives are configured', () => {
+    expect(withGoogleAnalyticsBlankieCsp({ generateNonces: true })).toEqual({
+      generateNonces: true,
+      scriptSrc: googleAnalyticsCspDirectives['script-src'],
+      connectSrc: googleAnalyticsCspDirectives['connect-src'],
+      imgSrc: googleAnalyticsCspDirectives['img-src'],
+      frameSrc: googleAnalyticsCspDirectives['frame-src']
+    })
+  })
+
+  it('merges the additional sources into Blankie options without changing the originals', () => {
+    const options = {
+      generateNonces: true,
+      scriptSrc: ['self', 'https://www.googletagmanager.com'],
+      connectSrc: ['self'],
+      imgSrc: ['self'],
+      frameSrc: ['self']
+    }
+
+    const merged = withGoogleAnalyticsBlankieCsp(options)
+
+    expect(merged).toEqual({
+      generateNonces: true,
+      scriptSrc: ['self', 'https://www.googletagmanager.com'],
+      connectSrc: ['self', ...googleAnalyticsCspDirectives['connect-src']],
+      imgSrc: ['self', ...googleAnalyticsCspDirectives['img-src']],
+      frameSrc: ['self', ...googleAnalyticsCspDirectives['frame-src']]
+    })
+    expect(options).toEqual({
+      generateNonces: true,
+      scriptSrc: ['self', 'https://www.googletagmanager.com'],
+      connectSrc: ['self'],
+      imgSrc: ['self'],
+      frameSrc: ['self']
+    })
+  })
+})
+
+describe('withGoogleAnalyticsHelmetCsp', () => {
+  it('adds the sources to an empty Helmet directives object', () => {
+    expect(withGoogleAnalyticsHelmetCsp({})).toEqual({
+      scriptSrc: googleAnalyticsCspDirectives['script-src'],
+      connectSrc: googleAnalyticsCspDirectives['connect-src'],
+      imgSrc: googleAnalyticsCspDirectives['img-src'],
+      frameSrc: googleAnalyticsCspDirectives['frame-src']
+    })
+  })
+
+  it('merges sources into Helmet directives without losing a nonce callback or changing the input', () => {
+    const nonce = (_request: unknown, response: { locals: { cspNonce: string } }) =>
+      `'nonce-${response.locals.cspNonce}'`
+    const directives = {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", nonce, 'https://www.googletagmanager.com'],
+      connectSrc: ["'self'"],
+      imgSrc: ["'self'"]
+    }
+
+    const merged = withGoogleAnalyticsHelmetCsp(directives)
+
+    expect(merged).toEqual({
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", nonce, 'https://www.googletagmanager.com'],
+      connectSrc: ["'self'", ...googleAnalyticsCspDirectives['connect-src']],
+      imgSrc: ["'self'", ...googleAnalyticsCspDirectives['img-src']],
+      frameSrc: googleAnalyticsCspDirectives['frame-src']
+    })
+    expect(merged.scriptSrc[1]).toBe(nonce)
+    expect(directives.scriptSrc).toEqual(["'self'", nonce, 'https://www.googletagmanager.com'])
+    expect(directives).not.toHaveProperty('frameSrc')
   })
 })
 
