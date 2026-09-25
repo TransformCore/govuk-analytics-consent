@@ -1,4 +1,6 @@
 import { buildConsentUpdate } from '../gtm/consent-mode.js'
+import { isCategoryAccepted } from '../consent/state.js'
+import type { ConsentModeCategory, ConsentState } from '../consent/types.js'
 
 declare global {
   interface Window {
@@ -7,8 +9,10 @@ declare global {
   }
 }
 
-export function updateConsentMode(analytics: boolean): void {
-  const payload = buildConsentUpdate(analytics)
+export function updateConsentMode(categories: ConsentModeCategory[], state: ConsentState): void {
+  const payload = buildConsentUpdate(categories, state)
+  const analyticsCategory = categories.find((category) => category.id === 'analytics')
+  const analyticsAccepted = analyticsCategory !== undefined && isCategoryAccepted(state, analyticsCategory)
 
   if (typeof window.gtag === 'function') {
     window.gtag('consent', 'update', payload)
@@ -17,7 +21,7 @@ export function updateConsentMode(analytics: boolean): void {
     dataLayer().push(['consent', 'update', payload])
   }
 
-  dataLayer().push({ event: 'cookie_consent_update', analytics_consent: analytics })
+  dataLayer().push({ event: 'cookie_consent_update', analytics_consent: analyticsAccepted })
 }
 
 function dataLayer(): unknown[] {

@@ -1,18 +1,26 @@
-import type { CookieCategory } from './types.js'
+import { defaultMessages } from './messages.js'
+import type { ConsentMessages, CookieCategory } from './types.js'
 
-export const analyticsCategory: CookieCategory = {
-  id: 'analytics',
-  title: 'Cookies that measure website use',
-  description:
-    'We use Google Analytics to measure how you use the service so we can improve it based on user needs. ' +
-    'We do not allow Google to use or share the data about how you use this site.'
+export function buildDefaultCategories(messages: ConsentMessages = defaultMessages): CookieCategory[] {
+  return [
+    {
+      id: 'essential',
+      title: messages.essentialCategoryTitle,
+      description: messages.essentialCategoryDescription,
+      essential: true
+    },
+    {
+      id: 'analytics',
+      title: messages.analyticsCategoryTitle,
+      shortName: 'analytics',
+      description: messages.analyticsCategoryDescription,
+      gtagSignals: ['analytics_storage']
+    }
+  ]
 }
 
-export const essentialCategory: CookieCategory = {
-  id: 'essential',
-  title: 'Strictly necessary cookies',
-  description:
-    'These essential cookies do things like remember your progress through a form. They always need to be on.'
-}
+const [essentialCategoryValue, analyticsCategoryValue] = buildDefaultCategories() as [CookieCategory, CookieCategory]
 
-export const defaultCategories: CookieCategory[] = [essentialCategory, analyticsCategory]
+export const analyticsCategory: CookieCategory = analyticsCategoryValue
+export const essentialCategory: CookieCategory = essentialCategoryValue
+export const defaultCategories: CookieCategory[] = buildDefaultCategories()

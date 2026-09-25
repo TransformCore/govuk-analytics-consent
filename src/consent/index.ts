@@ -1,5 +1,7 @@
 export * from './types.js'
+export * from './messages.js'
 export * from './categories.js'
+export * from './default-cookies.js'
 export * from './state.js'
 export * from './cookie.js'
 export * from './options.js'

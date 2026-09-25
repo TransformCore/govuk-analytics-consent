@@ -5,11 +5,11 @@ import {
   readConsentFromHeader,
   serialiseConsent
 } from '../src/consent/cookie.js'
-import { createInitialState, hasChoice, withAnalytics } from '../src/consent/state.js'
+import { createInitialState, hasChoice, withCategoryChoices } from '../src/consent/state.js'
 
 describe('consent cookie', () => {
   it('round-trips a state', () => {
-    const state = withAnalytics(createInitialState(1), true)
+    const state = withCategoryChoices(createInitialState(1), { analytics: true })
 
     expect(parseConsentCookie(serialiseConsent(state), 1)).toEqual(state)
   })
@@ -26,20 +26,20 @@ describe('consent cookie', () => {
   })
 
   it('discards a state written under a different version', () => {
-    const old = serialiseConsent(withAnalytics(createInitialState(1), true))
+    const old = serialiseConsent(withCategoryChoices(createInitialState(1), { analytics: true }))
 
-    expect(parseConsentCookie(old, 2).analytics).toBeNull()
+    expect(parseConsentCookie(old, 2).categories).toBeNull()
   })
 
-  it('coerces a non-boolean analytics value to null', () => {
-    const value = encodeURIComponent(JSON.stringify({ version: 1, analytics: 'yes' }))
+  it('coerces a non-boolean category value to null categories', () => {
+    const value = encodeURIComponent(JSON.stringify({ version: 1, categories: { analytics: 'yes' } }))
 
-    expect(parseConsentCookie(value, 1).analytics).toBeNull()
+    expect(parseConsentCookie(value, 1).categories).toBeNull()
   })
 
   it('reports whether a choice has been made', () => {
     expect(hasChoice(createInitialState(1))).toBe(false)
-    expect(hasChoice(withAnalytics(createInitialState(1), false))).toBe(true)
+    expect(hasChoice(withCategoryChoices(createInitialState(1), { analytics: false }))).toBe(true)
   })
 })
 
@@ -57,8 +57,8 @@ describe('parseCookieHeader', () => {
   })
 
   it('reads consent straight from a header', () => {
-    const cookie = `cookies_policy=${serialiseConsent(withAnalytics(createInitialState(1), true))}`
+    const cookie = `cookies_policy=${serialiseConsent(withCategoryChoices(createInitialState(1), { analytics: true }))}`
 
-    expect(readConsentFromHeader(cookie, 'cookies_policy', 1).analytics).toBe(true)
+    expect(readConsentFromHeader(cookie, 'cookies_policy', 1).categories).toEqual({ analytics: true })
   })
 })

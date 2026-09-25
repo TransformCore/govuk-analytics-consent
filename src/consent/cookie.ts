@@ -34,13 +34,22 @@ export function parseConsentCookie(
     return initial
   }
 
-  const analytics = candidate.analytics === true ? true : candidate.analytics === false ? false : null
+  const categories = isCategoriesMap(candidate.categories) ? candidate.categories : null
 
   return {
     version: expectedVersion,
-    analytics,
+    categories,
     updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : initial.updatedAt
   }
+}
+
+function isCategoriesMap(value: unknown): value is Record<string, boolean> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.values(value).every((entry) => typeof entry === 'boolean')
+  )
 }
 
 export function parseCookieHeader(header: string | null | undefined): Record<string, string> {

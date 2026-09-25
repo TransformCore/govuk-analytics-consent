@@ -40,6 +40,30 @@ describe('resolveOptions', () => {
     expect(resolveOptions().gtmContainerId).toBe('GTM-ABC123')
   })
 
+  it('provides sensible default English copy', () => {
+    const resolved = resolveOptions()
+
+    expect(resolved.messages.acceptAll).toBe('Accept all cookies')
+    expect(resolved.messages.rejectAll).toBe('Reject additional cookies')
+    expect(resolved.messages.changeSettings).toBe('Change your cookie settings')
+    expect(resolved.messages.saveSettings).toBe('Save cookie settings')
+  })
+
+  it('merges custom text over the default English copy', () => {
+    const resolved = resolveOptions({
+      messages: {
+        acceptAll: 'Accept all',
+        rejectAll: 'Reject all',
+        changeSettings: 'Manage cookies'
+      }
+    })
+
+    expect(resolved.messages.acceptAll).toBe('Accept all')
+    expect(resolved.messages.rejectAll).toBe('Reject all')
+    expect(resolved.messages.changeSettings).toBe('Manage cookies')
+    expect(resolved.messages.saveSettings).toBe('Save cookie settings')
+  })
+
   it('prefers an explicit container id over the environment', () => {
     process.env.GTM_CONTAINER_ID = 'GTM-ABC123'
 
@@ -84,6 +108,74 @@ describe('resolveOptions', () => {
 
     process.env.NODE_ENV = 'development'
     expect(resolveOptions().cookie.secure).toBe(false)
+  })
+})
+
+describe('cookies table defaults', () => {
+  it('always documents the consent cookie itself', () => {
+    const resolved = resolveOptions({ cookieName: 'my_policy' })
+
+    expect(resolved.cookies).toContainEqual(
+      expect.objectContaining({ name: 'my_policy', categoryId: 'essential' })
+    )
+  })
+
+  it('adds the standard GA cookies once a GTM container is configured', () => {
+    const resolved = resolveOptions({ gtmContainerId: 'GTM-ABC123' })
+
+    expect(resolved.cookies.some((cookie) => cookie.name === '_ga')).toBe(true)
+    expect(resolved.cookies.every((cookie) => cookie.categoryId !== 'analytics' || cookie.name.startsWith('_ga'))).toBe(true)
+  })
+
+  it('omits the GA cookies when no GTM container is configured', () => {
+    const resolved = resolveOptions({})
+
+    expect(resolved.cookies.some((cookie) => cookie.name === '_ga')).toBe(false)
+  })
+
+  it('lets a user-supplied cookie override a default with the same name', () => {
+    const resolved = resolveOptions({
+      cookieName: 'my_policy',
+      cookies: [{ name: 'my_policy', categoryId: 'essential', purpose: 'Custom purpose', expiry: '1 day' }]
+    })
+
+    expect(resolved.cookies).toContainEqual({
+      name: 'my_policy',
+      categoryId: 'essential',
+      purpose: 'Custom purpose',
+      expiry: '1 day'
+    })
+  })
+
+  it('adds a user-supplied cookie alongside the defaults', () => {
+    const resolved = resolveOptions({
+      cookies: [{ name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' }]
+    })
+
+    expect(resolved.cookies.some((cookie) => cookie.name === 'session_id')).toBe(true)
+    expect(resolved.cookies.length).toBeGreaterThan(1)
+  })
+
+  it('omits every default cookie when includeDefaultCookies is false', () => {
+    const resolved = resolveOptions({ gtmContainerId: 'GTM-ABC123', includeDefaultCookies: false })
+
+    expect(resolved.cookies).toEqual([])
+  })
+
+  it('rejects a cookie definition referencing an unknown category', () => {
+    expect(() =>
+      resolveOptions({
+        cookies: [{ name: 'x', categoryId: 'marketing', purpose: 'p', expiry: '1 year' }]
+      })
+    ).toThrow(/Invalid cookie definition/)
+  })
+
+  it('rejects a cookie definition with a blank field', () => {
+    expect(() =>
+      resolveOptions({
+        cookies: [{ name: '', categoryId: 'essential', purpose: 'p', expiry: '1 year' }]
+      })
+    ).toThrow(/Invalid cookie definition/)
   })
 })
 

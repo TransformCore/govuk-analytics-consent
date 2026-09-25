@@ -32,18 +32,28 @@ export {
   essentialCategory,
   defaultCategories
 } from './consent/categories.js'
+export { defaultMessages, resolveMessages, welshMessages } from './consent/messages.js'
+export type { ConsentMessages } from './consent/types.js'
+export { defaultCookieDefinitions } from './consent/default-cookies.js'
 export {
   parseConsentCookie,
   serialiseConsent,
   parseCookieHeader,
   readConsentFromHeader
 } from './consent/cookie.js'
-export { createInitialState, withAnalytics, hasChoice } from './consent/state.js'
+export {
+  createInitialState,
+  withCategoryChoices,
+  buildCategoryChoices,
+  isCategoryAccepted,
+  hasChoice
+} from './consent/state.js'
 export { buildConsentDefault, buildConsentUpdate } from './gtm/consent-mode.js'
 export {
   renderConsentHead,
   renderConsentNoscript,
   renderConsentBanner,
+  renderConsentCookiesPage,
   renderConsentScripts
 } from './ui/html.js'
 export { buildViewModel } from './ui/view-model.js'
@@ -55,6 +65,7 @@ export {
 export type {
   ConsentState,
   CookieCategory,
+  CookieDefinition,
   GovUkAnalyticsConsentOptions,
   ResolvedOptions
 } from './consent/types.js'

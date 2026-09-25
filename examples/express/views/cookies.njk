@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+{% from "govuk-analytics-consent/macro.njk" import govukAnalyticsConsentHead, govukAnalyticsConsentNoscript, govukAnalyticsConsentCookiesPage, govukAnalyticsConsentScripts %}
+<html lang="en" class="govuk-template">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Cookies - Example service</title>
+    <link rel="stylesheet" href="/govuk-frontend/govuk-frontend.min.css">
+    {{ govukAnalyticsConsentHead(govukAnalyticsConsent) }}
+  </head>
+  <body class="govuk-template__body">
+    {{ govukAnalyticsConsentNoscript(govukAnalyticsConsent) }}
+    <div class="govuk-width-container">
+      <main class="govuk-main-wrapper">
+        {{ govukAnalyticsConsentCookiesPage(govukAnalyticsConsent) }}
+      </main>
+    </div>
+    {{ govukAnalyticsConsentScripts(govukAnalyticsConsent) }}
+  </body>
+</html>

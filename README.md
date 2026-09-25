@@ -7,6 +7,7 @@ framework-agnostic with a first-class Express adapter.
 Source: https://github.com/TransformCore/govuk-analytics-consent
 
 - GOV.UK Frontend compatible cookie banner
+- Optional GOV.UK cookies-page fragment for granular per-category preferences
 - Consent stored in a `cookies_policy` cookie
 - Consent Mode defaults to **denied** before GTM loads
 - Consent Mode updated the moment a user accepts or rejects
@@ -73,7 +74,7 @@ registerGovUkAnalyticsConsent(app, { serviceName: 'Apply for a licence' })
 Not using Nunjucks? The same HTML is available directly:
 
 ```js
-const { head, noscript, banner, scripts } = res.locals.govukAnalyticsConsent
+const { head, noscript, banner, cookiesPage, scripts } = res.locals.govukAnalyticsConsent
 ```
 
 ## Options
@@ -89,20 +90,51 @@ All optional.
 | `cookiesPageUrl` | none | Renders the banner's "View cookies" link; same-origin paths only |
 | `consentWaitForUpdate` | `500` | Consent Mode `wait_for_update` in ms; `false` omits it |
 | `serviceName` | `this service` | Used in the banner heading |
-| `categories` | essential + analytics | `CookieCategory[]` metadata |
+| `messages` | English defaults | Partial message override set for banner, page copy, category labels, table headers and other user-facing strings |
+| `categories` | essential + analytics | `CookieCategory[]` metadata; add `essential: true` for always-on categories and `gtagSignals` for the Consent Mode signals a category controls |
+| `cookies` | none | `CookieDefinition[]` documenting cookies for the cookies page; merges with (and can override by `name`) the built-in defaults below |
+| `includeDefaultCookies` | `true` | Set to `false` to omit the built-in consent-cookie and GA rows entirely |
 | `secureCookie` | `NODE_ENV === 'production'` | |
 | `cookieMaxAge` | 1 year (seconds) | |
 | `getNonce` | none | `(request) => string` — applied to every injected `<script>` for CSP |
+
+## Localised copy
+
+The library includes sensible English defaults, and you can override the copy for any locale. For a built-in Welsh set, import `welshMessages`:
+
+```js
+import { registerGovUkAnalyticsConsent, welshMessages } from '@transform-uk/govuk-analytics-consent'
+
+registerGovUkAnalyticsConsent(server, {
+  serviceName: 'Gwasanaeth',
+  messages: welshMessages
+})
+```
+
+You can also provide a partial object to override only the strings you need:
+
+```js
+registerGovUkAnalyticsConsent(app, {
+  serviceName: 'Apply for a licence',
+  messages: {
+    acceptAll: 'Derbyn pob cwci',
+    rejectAll: 'Gwrthod cwcis ychwanegol',
+    changeSettings: 'Newid eich gosodiadau cwcis'
+  }
+})
+```
+
+The full message structure is available as `ConsentMessages`, and it supports banner text, cookies-page text, category titles/descriptions, table headings, radio labels, and notification copy.
 
 ## How it works
 
 1. The head snippet initialises `dataLayer`, calls `gtag('consent', 'default', …)` with every
    signal denied plus `wait_for_update`, then loads the GTM container.
-2. The deferred client script reads `cookies_policy`. If a choice exists it immediately calls
-   `gtag('consent', 'update', { analytics_storage: … })`, and also pushes a
-   `cookie_consent_update` dataLayer event so GTM tags can trigger on it.
-3. If no choice exists the banner is shown. Accept/reject writes the cookie, updates Consent
-   Mode and swaps in the confirmation message.
+2. The deferred client script reads the consent cookie. If a choice exists it immediately calls
+   `gtag('consent', 'update', …)`, and also pushes a `cookie_consent_update` dataLayer event so
+   GTM tags can trigger on it.
+3. If no choice exists the banner is shown. Accept all/reject additional writes the cookie,
+   updates Consent Mode and swaps in the confirmation message.
 4. Without JavaScript the banner form posts to `{routePrefix}/consent`, which sets the cookie
    and redirects back. Return paths are validated as same-origin, so it cannot be used as an
    open redirect.
@@ -115,7 +147,7 @@ show the banner without a server round-trip.
 ```ts
 interface ConsentState {
   version: number
-  analytics: boolean | null // null = no choice made
+  categories: Record<string, boolean> | null // null = no choice made; keyed by non-essential category id
   updatedAt: string
 }
 ```
@@ -127,14 +159,43 @@ Any malformed, tampered or out-of-date cookie degrades to "no choice made" and r
 | Route | Purpose |
 | --- | --- |
 | `GET {routePrefix}/consent.js` | Browser consent manager (ETag, 1 hour cache) |
-| `POST {routePrefix}/consent` | No-JavaScript fallback |
+| `POST {routePrefix}/consent` | No-JavaScript fallback for both the banner and the cookies page |
 
-## Adding a /cookies page later
+## Cookies page
 
-`CookieCategory[]` metadata already drives the banner and is exposed on the view context, so a
-preferences page can be added without a breaking change: build the page from
-`govukAnalyticsConsent.categories`, post to the existing consent route, and set
-`cookiesPageUrl` to make the banner link to it.
+The [GOV.UK cookies-page pattern](https://design-system.service.gov.uk/patterns/cookies-page/)
+is available as a fragment, the same way the banner is — mount your own route/view and embed it
+in your layout:
+
+```njk
+{% from "govuk-analytics-consent/macro.njk" import govukAnalyticsConsentCookiesPage %}
+{{ govukAnalyticsConsentCookiesPage(govukAnalyticsConsent) }}
+```
+
+It lists every configured category with a table of its cookies and, under a "Change your cookie
+settings" heading, a Yes/No radios group per non-essential category — matching the markup a real
+`govukRadios`/`govukButton` component call would produce (`cookies[{categoryId}]`, values `yes`/
+`no`). Sensible defaults mean most services need no extra config: the consent cookie itself and
+the standard GA cookies (once `gtmContainerId` is set) are documented automatically. Add entries
+for your own cookies (a session cookie, for example) via `cookies`, and set `cookiesPageUrl` so
+the banner links to it:
+
+```js
+registerGovUkAnalyticsConsent(app, {
+  cookiesPageUrl: '/cookies',
+  cookies: [
+    { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' }
+  ]
+})
+```
+
+Saving stays on the cookies page (the hidden `returnUrl` field points back to itself) and shows a
+success notification banner — matching a real `govukNotificationBanner({ type: "success" })` call
+— with a "Go back to the page you were looking at" link pointing to wherever the user came from.
+No extra markup is needed in your main layout; it's all part of `govukAnalyticsConsentCookiesPage`.
+
+See [examples/express/views/cookies.njk](examples/express/views/cookies.njk) and
+[examples/express/views/index.njk](examples/express/views/index.njk) for a full example.
 
 ## Development
 

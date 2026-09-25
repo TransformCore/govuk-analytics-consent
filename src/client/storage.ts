@@ -1,5 +1,5 @@
 import { parseConsentCookie, serialiseConsent } from '../consent/cookie.js'
-import { createInitialState, withAnalytics } from '../consent/state.js'
+import { createInitialState, withCategoryChoices } from '../consent/state.js'
 import type { ConsentState } from '../consent/types.js'
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365
@@ -17,8 +17,12 @@ export function readConsent(cookieName: string, version: number): ConsentState {
   return parseConsentCookie(match.slice(cookieName.length + 1), version)
 }
 
-export function writeConsent(cookieName: string, version: number, analytics: boolean): ConsentState {
-  const state = withAnalytics(createInitialState(version), analytics)
+export function writeConsent(
+  cookieName: string,
+  version: number,
+  choices: Record<string, boolean>
+): ConsentState {
+  const state = withCategoryChoices(createInitialState(version), choices)
 
   const parts = [
     `${cookieName}=${serialiseConsent(state)}`,

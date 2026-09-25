@@ -37,11 +37,11 @@ describe('express integration', () => {
     expect(second.status).toBe(304)
   })
 
-  it('sets the consent cookie and redirects on the no-JavaScript fallback', async () => {
+  it('sets the consent cookie and redirects on the no-JavaScript banner fallback', async () => {
     const response = await request(app)
       .post('/govuk-analytics-consent/consent')
       .type('form')
-      .send({ analytics: 'accept', returnUrl: '/start' })
+      .send({ preference: 'accept-all', returnUrl: '/start' })
 
     const cookie = String(response.headers['set-cookie'])
 
@@ -51,22 +51,54 @@ describe('express integration', () => {
     expect(cookie).toContain('SameSite=Lax')
   })
 
-  it('records a rejection for any value other than accept', async () => {
+  it('records a rejection of every non-essential category on reject-all', async () => {
     const response = await request(app)
       .post('/govuk-analytics-consent/consent')
       .type('form')
-      .send({ analytics: 'anything-else', returnUrl: '/start' })
+      .send({ preference: 'reject-all', returnUrl: '/start' })
 
     expect(decodeURIComponent(String(response.headers['set-cookie']))).toContain(
       '"analytics":false'
     )
   })
 
+  it('records a granular per-category choice from the cookies page', async () => {
+    const response = await request(app)
+      .post('/govuk-analytics-consent/consent')
+      .type('form')
+      .send({ preference: 'save', 'cookies[analytics]': 'yes', returnUrl: '/start' })
+
+    expect(decodeURIComponent(String(response.headers['set-cookie']))).toContain(
+      '"analytics":true'
+    )
+    expect(response.headers.location).toBe('/start?cookies-updated=true')
+  })
+
+  it('treats a missing granular choice as a rejection', async () => {
+    const response = await request(app)
+      .post('/govuk-analytics-consent/consent')
+      .type('form')
+      .send({ preference: 'save', returnUrl: '/start' })
+
+    expect(decodeURIComponent(String(response.headers['set-cookie']))).toContain(
+      '"analytics":false'
+    )
+  })
+
+  it('does not append the saved flag for the banner accept-all/reject-all choice', async () => {
+    const response = await request(app)
+      .post('/govuk-analytics-consent/consent')
+      .type('form')
+      .send({ preference: 'accept-all', returnUrl: '/start' })
+
+    expect(response.headers.location).toBe('/start')
+  })
+
   it('refuses to redirect off-site', async () => {
     const response = await request(app)
       .post('/govuk-analytics-consent/consent')
       .type('form')
-      .send({ analytics: 'reject', returnUrl: 'https://evil.example' })
+      .send({ preference: 'reject-all', returnUrl: 'https://evil.example' })
 
     expect(response.headers.location).toBe('/')
   })
@@ -79,7 +111,7 @@ describe('express integration', () => {
     const response = await request(parsed)
       .post('/govuk-analytics-consent/consent')
       .type('form')
-      .send({ analytics: 'accept', returnUrl: '/start' })
+      .send({ preference: 'accept-all', returnUrl: '/start' })
 
     expect(response.headers.location).toBe('/start')
     expect(decodeURIComponent(String(response.headers['set-cookie']))).toContain(
@@ -98,7 +130,11 @@ describe('express integration', () => {
 
   it('omits the banner once a choice has been stored', async () => {
     const consent = encodeURIComponent(
-      JSON.stringify({ version: 1, analytics: false, updatedAt: new Date().toISOString() })
+      JSON.stringify({
+        version: 1,
+        categories: { analytics: false },
+        updatedAt: new Date().toISOString()
+      })
     )
 
     const response = await request(app).get('/start').set('cookie', `cookies_policy=${consent}`)

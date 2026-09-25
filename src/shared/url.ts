@@ -35,3 +35,24 @@ export function normaliseRoutePrefix(value: string): string {
 
   return withoutTrailingSlash
 }
+
+/** Reads a single query parameter from a path+query string, e.g. `/start?a=1`. */
+export function readQueryParam(path: string, key: string): string | null {
+  const queryIndex = path.indexOf('?')
+
+  if (queryIndex === -1) {
+    return null
+  }
+
+  return new URLSearchParams(path.slice(queryIndex)).get(key)
+}
+
+/** Appends a query parameter to an already-validated same-origin path. */
+export function appendQueryParam(path: string, key: string, value: string): string {
+  const hashIndex = path.indexOf('#')
+  const withoutHash = hashIndex === -1 ? path : path.slice(0, hashIndex)
+  const suffix = hashIndex === -1 ? '' : path.slice(hashIndex)
+  const separator = withoutHash.includes('?') ? '&' : '?'
+
+  return `${withoutHash}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}${suffix}`
+}

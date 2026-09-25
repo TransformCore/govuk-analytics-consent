@@ -63,11 +63,11 @@ describe('hapi integration', () => {
     expect(second.statusCode).toBe(304)
   })
 
-  it('sets the consent cookie and redirects on the no-JavaScript fallback', async () => {
+  it('sets the consent cookie and redirects on the no-JavaScript banner fallback', async () => {
     const response = await server.inject({
       method: 'POST',
       url: '/govuk-analytics-consent/consent',
-      payload: 'analytics=accept&returnUrl=/start',
+      payload: 'preference=accept-all&returnUrl=/start',
       headers: { 'content-type': 'application/x-www-form-urlencoded' }
     })
 
@@ -80,11 +80,25 @@ describe('hapi integration', () => {
     expect(cookie).toContain('SameSite=Lax')
   })
 
+  it('records a granular per-category choice from the cookies page', async () => {
+    const response = await server.inject({
+      method: 'POST',
+      url: '/govuk-analytics-consent/consent',
+      payload: 'preference=save&cookies[analytics]=yes&returnUrl=/start',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' }
+    })
+
+    expect(decodeURIComponent(String(response.headers['set-cookie']))).toContain(
+      '"analytics":true'
+    )
+    expect(response.headers.location).toBe('/start?cookies-updated=true')
+  })
+
   it('refuses to redirect off-site', async () => {
     const response = await server.inject({
       method: 'POST',
       url: '/govuk-analytics-consent/consent',
-      payload: 'analytics=reject&returnUrl=//evil.example',
+      payload: 'preference=reject-all&returnUrl=//evil.example',
       headers: { 'content-type': 'application/x-www-form-urlencoded' }
     })
 
@@ -102,7 +116,11 @@ describe('hapi integration', () => {
 
   it('omits the banner once a choice has been stored', async () => {
     const consent = encodeURIComponent(
-      JSON.stringify({ version: 1, analytics: true, updatedAt: new Date().toISOString() })
+      JSON.stringify({
+        version: 1,
+        categories: { analytics: true },
+        updatedAt: new Date().toISOString()
+      })
     )
 
     const response = await server.inject({

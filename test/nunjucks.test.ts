@@ -31,6 +31,10 @@ describe('nunjucks macros', () => {
     expect(render('govukAnalyticsConsentBanner')).toBe(context.banner)
   })
 
+  it('renders the cookies page identically to the HTML builder', () => {
+    expect(render('govukAnalyticsConsentCookiesPage')).toBe(context.cookiesPage)
+  })
+
   it('renders the script tag identically to the HTML builder', () => {
     expect(render('govukAnalyticsConsentScripts')).toBe(context.scripts)
   })

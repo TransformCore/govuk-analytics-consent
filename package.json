@@ -1,6 +1,6 @@
 {
   "name": "@transform-uk/govuk-analytics-consent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Near zero-configuration GOV.UK cookie consent banner, Google Tag Manager loading and Google Consent Mode integration for Node.js services",
   "license": "MIT",
   "type": "module",

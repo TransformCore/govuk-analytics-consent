@@ -1,13 +1,10 @@
 import { updateConsentMode } from './gtag.js'
 import { writeConsent } from './storage.js'
+import { buildCategoryChoices } from '../consent/state.js'
 import { BANNER_ID } from '../ui/html.js'
+import type { ClientConfig } from './config.js'
 
-export interface BannerConfig {
-  cookieName: string
-  cookieVersion: number
-}
-
-export function initBanner(config: BannerConfig): void {
+export function initBanner(config: ClientConfig): void {
   const banner = document.getElementById(BANNER_ID)
 
   if (banner === null) {
@@ -30,11 +27,12 @@ export function initBanner(config: BannerConfig): void {
       return
     }
 
-    const analytics = action === 'accept'
+    const accepted = action === 'accept'
+    const choices = buildCategoryChoices(config.categories, accepted)
+    const state = writeConsent(config.cookieName, config.cookieVersion, choices)
 
-    writeConsent(config.cookieName, config.cookieVersion, analytics)
-    updateConsentMode(analytics)
-    showConfirmation(banner, analytics ? 'accepted' : 'rejected')
+    updateConsentMode(config.categories, state)
+    showConfirmation(banner, accepted ? 'accepted' : 'rejected')
   })
 }
 

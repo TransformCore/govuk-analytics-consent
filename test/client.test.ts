@@ -1,20 +1,23 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resolveOptions } from '../src/consent/options.js'
-import { createInitialState, withAnalytics } from '../src/consent/state.js'
+import { createInitialState, withCategoryChoices } from '../src/consent/state.js'
 import { serialiseConsent } from '../src/consent/cookie.js'
-import { renderConsentBanner, renderConsentScripts } from '../src/ui/html.js'
+import { renderConsentBanner, renderConsentCookiesPage, renderConsentScripts } from '../src/ui/html.js'
 import { buildViewModel } from '../src/ui/view-model.js'
 import { start } from '../src/client/index.js'
 import { readConsent } from '../src/client/storage.js'
+import type { ConsentState } from '../src/consent/types.js'
 
 const options = resolveOptions({ gtmContainerId: 'GTM-ABC123', consentWaitForUpdate: 500 })
 
-function mount({ consent }: { consent?: ReturnType<typeof withAnalytics> } = {}): void {
+function mount({ consent, cookiesPage = false }: { consent?: ConsentState; cookiesPage?: boolean } = {}): void {
   const viewModel = buildViewModel(options, { consent, currentPath: '/start' })
 
   document.head.innerHTML = renderConsentScripts(viewModel)
-  document.body.innerHTML = renderConsentBanner(viewModel)
+  document.body.innerHTML = cookiesPage
+    ? renderConsentCookiesPage(viewModel)
+    : renderConsentBanner(viewModel)
   window.dataLayer = []
   start()
 }
@@ -40,7 +43,9 @@ describe('browser consent manager', () => {
     mount()
     click('accept')
 
-    expect(readConsent(options.cookieName, options.cookieVersion).analytics).toBe(true)
+    expect(readConsent(options.cookieName, options.cookieVersion).categories).toEqual({
+      analytics: true
+    })
     expect(window.dataLayer?.[0]).toEqual([
       'consent',
       'update',
@@ -52,7 +57,9 @@ describe('browser consent manager', () => {
     mount()
     click('reject')
 
-    expect(readConsent(options.cookieName, options.cookieVersion).analytics).toBe(false)
+    expect(readConsent(options.cookieName, options.cookieVersion).categories).toEqual({
+      analytics: false
+    })
     expect(window.dataLayer?.[0]).toEqual(['consent', 'update', { analytics_storage: 'denied' }])
   })
 
@@ -96,7 +103,7 @@ describe('browser consent manager', () => {
   })
 
   it('applies a stored choice to Consent Mode without rendering a banner', () => {
-    const consent = withAnalytics(createInitialState(options.cookieVersion), true)
+    const consent = withCategoryChoices(createInitialState(options.cookieVersion), { analytics: true })
     document.cookie = `${options.cookieName}=${serialiseConsent(consent)}; path=/`
 
     mount({ consent })
@@ -116,5 +123,21 @@ describe('browser consent manager', () => {
 
     expect(() => start()).not.toThrow()
     expect(window.dataLayer).toHaveLength(0)
+  })
+})
+
+describe('cookies page', () => {
+  it('is a plain form: start() does not error and applies the stored choice on the next load', () => {
+    // Simulates the fresh page load after the cookies page form posts and redirects back.
+    const consent = withCategoryChoices(createInitialState(options.cookieVersion), { analytics: true })
+    document.cookie = `${options.cookieName}=${serialiseConsent(consent)}; path=/`
+
+    expect(() => mount({ consent, cookiesPage: true })).not.toThrow()
+    expect(document.querySelector('form input[name="cookies[analytics]"]')).not.toBeNull()
+    expect(window.dataLayer?.[0]).toEqual([
+      'consent',
+      'update',
+      { analytics_storage: 'granted' }
+    ])
   })
 })

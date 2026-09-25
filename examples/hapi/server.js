@@ -29,8 +29,15 @@ server.views({
   path: 'examples/hapi/views'
 })
 
-// Reads GTM_CONTAINER_ID from the environment; everything else is optional.
-registerGovUkAnalyticsConsent(server, { serviceName: 'Example service' })
+// Reads GTM_CONTAINER_ID from the environment; the consent cookie and GA rows are
+// documented automatically, so only the service's own session cookie needs adding.
+registerGovUkAnalyticsConsent(server, {
+  serviceName: 'Example service',
+  cookiesPageUrl: '/cookies',
+  cookies: [
+    { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' }
+  ],
+})
 
 server.route({
   method: 'GET',
@@ -48,6 +55,12 @@ server.route({
   method: 'GET',
   path: '/',
   handler: (_request, h) => h.view('index.njk')
+})
+
+server.route({
+  method: 'GET',
+  path: '/cookies',
+  handler: (_request, h) => h.view('cookies.njk')
 })
 
 await server.start()

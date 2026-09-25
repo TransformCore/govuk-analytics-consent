@@ -12,6 +12,13 @@
       ...
       {{ govukAnalyticsConsentScripts(govukAnalyticsConsent) }}
     </body>
+
+  On your own cookies-page route/view, embed the preferences form in your layout. Saving
+  redirects back to the cookies page itself and shows a success notification banner with a
+  link back to whichever page the user came from:
+
+    {% from "govuk-analytics-consent/macro.njk" import govukAnalyticsConsentCookiesPage %}
+    {{ govukAnalyticsConsentCookiesPage(govukAnalyticsConsent) }}
 #}
 
 {% macro govukAnalyticsConsentHead(ctx) %}{{ (ctx.head if ctx else "") | safe }}{% endmacro %}
@@ -19,5 +26,7 @@
 {% macro govukAnalyticsConsentNoscript(ctx) %}{{ (ctx.noscript if ctx else "") | safe }}{% endmacro %}
 
 {% macro govukAnalyticsConsentBanner(ctx) %}{{ (ctx.banner if ctx else "") | safe }}{% endmacro %}
+
+{% macro govukAnalyticsConsentCookiesPage(ctx) %}{{ (ctx.cookiesPage if ctx else "") | safe }}{% endmacro %}
 
 {% macro govukAnalyticsConsentScripts(ctx) %}{{ (ctx.scripts if ctx else "") | safe }}{% endmacro %}

@@ -1,6 +1,12 @@
-import { defaultCategories } from './categories.js'
+import { buildDefaultCategories } from './categories.js'
+import { defaultCookieDefinitions } from './default-cookies.js'
 import { normaliseRoutePrefix, safeInternalPath } from '../shared/url.js'
-import type { GovUkAnalyticsConsentOptions, ResolvedOptions } from './types.js'
+import { resolveMessages } from './messages.js'
+import type {
+  CookieDefinition,
+  GovUkAnalyticsConsentOptions,
+  ResolvedOptions
+} from './types.js'
 
 export const GTM_CONTAINER_ID_PATTERN = /^GTM-[A-Z0-9]+$/
 
@@ -36,23 +42,83 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
     throw new Error(`Invalid cookieName: "${cookieName}"`)
   }
 
+  const messages = resolveMessages(options.messages)
+  const categories = options.categories ?? buildDefaultCategories(messages)
+  const cookieMaxAge = options.cookieMaxAge ?? ONE_YEAR_SECONDS
+  const resolvedGtmContainerId = gtmContainerId === '' ? null : gtmContainerId
+
+  const cookies = resolveCookieDefinitions(options, categories, {
+    cookieName,
+    cookieMaxAge,
+    gtmContainerId: resolvedGtmContainerId,
+    messages
+  })
+
   return {
-    gtmContainerId: gtmContainerId === '' ? null : gtmContainerId,
+    gtmContainerId: resolvedGtmContainerId,
     cookieName,
     cookieVersion,
     routePrefix: normaliseRoutePrefix(options.routePrefix ?? defaults.routePrefix),
     cookiesPageUrl: resolveCookiesPageUrl(options.cookiesPageUrl),
     consentWaitForUpdate: resolveWaitForUpdate(options.consentWaitForUpdate),
-    categories: options.categories ?? defaultCategories,
+    categories,
+    cookies,
     serviceName: options.serviceName ?? defaults.serviceName,
+    messages,
     cookie: {
       path: '/',
       sameSite: 'Lax',
       httpOnly: false,
       secure: options.secureCookie ?? process.env.NODE_ENV === 'production',
-      maxAge: options.cookieMaxAge ?? ONE_YEAR_SECONDS
+      maxAge: cookieMaxAge
     }
   }
+}
+
+function resolveCookieDefinitions(
+  options: GovUkAnalyticsConsentOptions,
+  categories: ResolvedOptions['categories'],
+  defaultsContext: {
+    cookieName: string
+    cookieMaxAge: number
+    gtmContainerId: string | null
+    messages: ResolvedOptions['messages']
+  }
+): CookieDefinition[] {
+  const includeDefaults = options.includeDefaultCookies ?? true
+  const defaults = includeDefaults ? defaultCookieDefinitions(defaultsContext) : []
+  const merged = mergeCookieDefinitions(defaults, options.cookies ?? [])
+  const categoryIds = new Set(categories.map((category) => category.id))
+
+  for (const cookie of merged) {
+    if (
+      typeof cookie.name !== 'string' ||
+      cookie.name.trim() === '' ||
+      typeof cookie.purpose !== 'string' ||
+      cookie.purpose.trim() === '' ||
+      typeof cookie.expiry !== 'string' ||
+      cookie.expiry.trim() === '' ||
+      !categoryIds.has(cookie.categoryId)
+    ) {
+      throw new Error(`Invalid cookie definition: ${JSON.stringify(cookie)}`)
+    }
+  }
+
+  return merged
+}
+
+/** A user-supplied entry overrides a default with the same `name`. */
+function mergeCookieDefinitions(
+  defaults: CookieDefinition[],
+  overrides: CookieDefinition[]
+): CookieDefinition[] {
+  const byName = new Map<string, CookieDefinition>()
+
+  for (const cookie of [...defaults, ...overrides]) {
+    byName.set(cookie.name, cookie)
+  }
+
+  return [...byName.values()]
 }
 
 function resolveCookiesPageUrl(value: string | undefined): string | null {

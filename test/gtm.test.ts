@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { buildConsentDefault, buildConsentUpdate } from '../src/gtm/consent-mode.js'
 import { gtmLoaderSnippet, gtmNoscriptSnippet } from '../src/gtm/loader.js'
 import { consentDefaultSnippet, headSnippet } from '../src/gtm/snippets.js'
+import { analyticsCategory, essentialCategory } from '../src/consent/categories.js'
+import { createInitialState, withCategoryChoices } from '../src/consent/state.js'
+
+const categories = [essentialCategory, analyticsCategory]
 
 describe('consent mode payloads', () => {
-  it('denies every signal by default', () => {
-    expect(buildConsentDefault(null)).toEqual({
+  it('denies every standard signal by default', () => {
+    expect(buildConsentDefault(categories, null)).toEqual({
       ad_storage: 'denied',
       ad_user_data: 'denied',
       ad_personalization: 'denied',
@@ -13,17 +17,38 @@ describe('consent mode payloads', () => {
     })
   })
 
+  it('also denies a custom signal declared by a category', () => {
+    const withMarketing = [
+      essentialCategory,
+      { id: 'marketing', title: 'Marketing', description: '', gtagSignals: ['personalization_storage'] }
+    ]
+
+    expect(buildConsentDefault(withMarketing, null).personalization_storage).toBe('denied')
+  })
+
   it('includes wait_for_update when configured', () => {
-    expect(buildConsentDefault(500).wait_for_update).toBe(500)
+    expect(buildConsentDefault(categories, 500).wait_for_update).toBe(500)
   })
 
   it('floors a fractional wait_for_update', () => {
-    expect(buildConsentDefault(500.9).wait_for_update).toBe(500)
+    expect(buildConsentDefault(categories, 500.9).wait_for_update).toBe(500)
+  })
+
+  it('still denies the standard signals when only an essential category is configured', () => {
+    expect(buildConsentDefault([essentialCategory], null)).toEqual({
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+      analytics_storage: 'denied'
+    })
   })
 
   it('maps consent updates to Consent Mode signals', () => {
-    expect(buildConsentUpdate(true)).toEqual({ analytics_storage: 'granted' })
-    expect(buildConsentUpdate(false)).toEqual({ analytics_storage: 'denied' })
+    const accepted = withCategoryChoices(createInitialState(1), { analytics: true })
+    const rejected = withCategoryChoices(createInitialState(1), { analytics: false })
+
+    expect(buildConsentUpdate(categories, accepted)).toEqual({ analytics_storage: 'granted' })
+    expect(buildConsentUpdate(categories, rejected)).toEqual({ analytics_storage: 'denied' })
   })
 })
 
@@ -44,7 +69,7 @@ describe('gtmLoaderSnippet', () => {
 })
 
 describe('headSnippet', () => {
-  const snippet = headSnippet({ containerId: 'GTM-ABC123', waitForUpdate: 500 })
+  const snippet = headSnippet({ categories, containerId: 'GTM-ABC123', waitForUpdate: 500 })
 
   it('sets the consent default before loading GTM', () => {
     expect(snippet.indexOf("gtag('consent','default'")).toBeLessThan(
@@ -57,17 +82,17 @@ describe('headSnippet', () => {
   })
 
   it('initialises the dataLayer before calling gtag', () => {
-    expect(consentDefaultSnippet(null).indexOf('window.dataLayer')).toBe(0)
+    expect(consentDefaultSnippet(categories, null).indexOf('window.dataLayer')).toBe(0)
   })
 
   it('applies a CSP nonce', () => {
-    expect(headSnippet({ containerId: null, waitForUpdate: null, nonce: 'abc123' })).toContain(
-      'nonce="abc123"'
-    )
+    expect(
+      headSnippet({ categories, containerId: null, waitForUpdate: null, nonce: 'abc123' })
+    ).toContain('nonce="abc123"')
   })
 
   it('still gates consent when GTM is not configured', () => {
-    const withoutGtm = headSnippet({ containerId: null, waitForUpdate: 500 })
+    const withoutGtm = headSnippet({ categories, containerId: null, waitForUpdate: 500 })
 
     expect(withoutGtm).toContain("gtag('consent','default'")
     expect(withoutGtm).not.toContain('googletagmanager.com')

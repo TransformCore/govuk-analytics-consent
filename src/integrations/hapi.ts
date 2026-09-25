@@ -1,6 +1,7 @@
 import { resolveOptions } from '../consent/options.js'
 import { clientAsset } from './client-asset.js'
 import { consentRoutePaths, createConsentContext, handleConsentPost } from './core.js'
+import { readQueryParam, safeInternalPath } from '../shared/url.js'
 import type { GovUkAnalyticsConsentOptions, ResolvedOptions } from '../consent/types.js'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -71,11 +72,16 @@ export function registerHapi(
     const response = request.response
 
     if (response?.variety === 'view') {
+      const currentPath = `${request.url?.pathname ?? request.path ?? '/'}${request.url?.search ?? ''}`
+      const returnUrl = readQueryParam(currentPath, 'returnUrl')
+
       response.source.context = {
         ...(response.source.context ?? {}),
         govukAnalyticsConsent: createConsentContext(resolved, {
           cookieHeader: request.headers.cookie,
-          currentPath: `${request.url?.pathname ?? request.path ?? '/'}${request.url?.search ?? ''}`,
+          currentPath,
+          returnTo: returnUrl !== null ? safeInternalPath(returnUrl, currentPath) : undefined,
+          cookiesSaved: readQueryParam(currentPath, 'cookies-updated') === 'true',
           nonce: options.getNonce?.(request) ?? null
         })
       }
