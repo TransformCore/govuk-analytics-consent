@@ -185,13 +185,20 @@ Enable all three alongside the defaults:
 
 ```js
 import {
-  additionalConsentModeCategories,
+  advertisingCategory,
   defaultCategories,
+  functionalityCategory,
+  personalizationCategory,
   registerGovUkAnalyticsConsent
 } from '@transform-uk/govuk-analytics-consent'
 
 registerGovUkAnalyticsConsent(app, {
-  categories: [...defaultCategories, ...additionalConsentModeCategories]
+  categories: [
+    ...defaultCategories,
+    advertisingCategory,
+    functionalityCategory,
+    personalizationCategory
+  ]
 })
 ```
 

@@ -3,7 +3,6 @@ import { buildConsentDefault, buildConsentUpdate } from '../src/gtm/consent-mode
 import { gtmLoaderSnippet, gtmNoscriptSnippet } from '../src/gtm/loader.js'
 import { consentDefaultSnippet, headSnippet } from '../src/gtm/snippets.js'
 import {
-  additionalConsentModeCategories,
   advertisingCategory,
   analyticsCategory,
   essentialCategory,
@@ -67,11 +66,6 @@ describe('consent mode payloads', () => {
   })
 
   it('provides opt-in presets for every additional Consent Mode category', () => {
-    expect(additionalConsentModeCategories).toEqual([
-      advertisingCategory,
-      functionalityCategory,
-      personalizationCategory
-    ])
     expect(advertisingCategory.gtagSignals).toEqual([
       'ad_storage',
       'ad_user_data',
@@ -82,7 +76,12 @@ describe('consent mode payloads', () => {
   })
 
   it('maps choices for all additional Consent Mode categories', () => {
-    const allCategories = [...categories, ...additionalConsentModeCategories]
+    const allCategories = [
+      ...categories,
+      advertisingCategory,
+      functionalityCategory,
+      personalizationCategory
+    ]
     const state = withCategoryChoices(createInitialState(1), {
       analytics: true,
       advertising: false,

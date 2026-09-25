@@ -44,8 +44,7 @@ export {
   essentialCategory,
   functionalityCategory,
   personalizationCategory,
-  defaultCategories,
-  additionalConsentModeCategories
+  defaultCategories
 } from './consent/categories.js'
 export { defaultMessages, resolveMessages, welshMessages } from './consent/messages.js'
 export type { ConsentMessages } from './consent/types.js'
