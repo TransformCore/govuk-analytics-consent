@@ -137,7 +137,7 @@ describe('express integration', () => {
       })
     )
 
-    const response = await request(app).get('/start').set('cookie', `cookies_policy=${consent}`)
+    const response = await request(app).get('/start').set('cookie', `govuk_analytics_consent=${consent}`)
 
     expect(response.text).not.toContain('govuk-cookie-banner')
   })

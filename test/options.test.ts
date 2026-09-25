@@ -26,7 +26,7 @@ describe('resolveOptions', () => {
   it('applies documented defaults', () => {
     const resolved = resolveOptions()
 
-    expect(resolved.cookieName).toBe('cookies_policy')
+    expect(resolved.cookieName).toBe('govuk_analytics_consent')
     expect(resolved.cookieVersion).toBe(1)
     expect(resolved.routePrefix).toBe('/govuk-analytics-consent')
     expect(resolved.consentWaitForUpdate).toBe(500)

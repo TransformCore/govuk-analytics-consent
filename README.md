@@ -8,7 +8,7 @@ Source: https://github.com/TransformCore/govuk-analytics-consent
 
 - GOV.UK Frontend compatible cookie banner
 - Optional GOV.UK cookies-page fragment for granular per-category preferences
-- Consent stored in a `cookies_policy` cookie
+- Consent stored in a `govuk_analytics_consent` cookie
 - Consent Mode defaults to **denied** before GTM loads
 - Consent Mode updated the moment a user accepts or rejects
 - GTM loaded automatically from `GTM_CONTAINER_ID`
@@ -152,7 +152,7 @@ All optional.
 | Option | Default | Notes |
 | --- | --- | --- |
 | `gtmContainerId` | `process.env.GTM_CONTAINER_ID` | Must match `GTM-XXXXXXX`; omitted means the service runs un-instrumented |
-| `cookieName` | `cookies_policy` | |
+| `cookieName` | `govuk_analytics_consent` | |
 | `cookieVersion` | `1` | Bumping it re-prompts every user. Use this if you need to ask for new consent. Details are in the [Cookies page design pattern](https://design-system.service.gov.uk/patterns/cookies-page/#keeping-your-cookies-page-up-to-date-and-asking-for-new-consent) |
 | `routePrefix` | `/govuk-analytics-consent` | |
 | `cookiesPageUrl` | none | Renders the banner's "View cookies" link; same-origin paths only |

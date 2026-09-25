@@ -75,7 +75,7 @@ describe('hapi integration', () => {
 
     expect(response.statusCode).toBe(303)
     expect(response.headers.location).toBe('/start')
-    expect(cookie).toContain('cookies_policy=')
+    expect(cookie).toContain('govuk_analytics_consent=')
     expect(decodeURIComponent(cookie)).toContain('"analytics":true')
     expect(cookie).toContain('SameSite=Lax')
   })
@@ -125,7 +125,7 @@ describe('hapi integration', () => {
 
     const response = await server.inject({
       url: '/start',
-      headers: { cookie: `cookies_policy=${consent}` }
+      headers: { cookie: `govuk_analytics_consent=${consent}` }
     })
 
     expect(response.result).not.toContain('govuk-cookie-banner')

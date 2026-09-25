@@ -13,7 +13,7 @@ export const GTM_CONTAINER_ID_PATTERN = /^GTM-[A-Z0-9]+$/
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365
 
 export const defaults = {
-  cookieName: 'cookies_policy',
+  cookieName: 'govuk_analytics_consent',
   cookieVersion: 1,
   routePrefix: '/govuk-analytics-consent',
   consentWaitForUpdate: 500,
