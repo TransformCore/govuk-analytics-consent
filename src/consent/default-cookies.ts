@@ -33,14 +33,17 @@ export function defaultCookieDefinitions({
         categoryId: 'analytics',
         purpose: resolvedMessages.gaCookiePurpose,
         expiry: '2 years',
-        provider: 'Google Analytics'
+        provider: 'Google Analytics',
+        removeOnReject: 'host-and-parents'
       },
       {
         name: `_ga_<id>`,
         categoryId: 'analytics',
         purpose: resolvedMessages.gaSessionCookiePurpose,
         expiry: '2 years',
-        provider: 'Google Analytics'
+        provider: 'Google Analytics',
+        match: '_ga_*',
+        removeOnReject: 'host-and-parents'
       }
     )
   }

@@ -85,6 +85,20 @@ describe('renderConsentScripts', () => {
     expect(html).toContain('data-categories=')
     expect(html).toContain('analytics_storage')
   })
+
+  it('includes the cookie removal matchers for each category', () => {
+    const resolved = resolveOptions({ gtmContainerId: 'GTM-ABC123' })
+    const html = renderConsentScripts(buildViewModel(resolved))
+    const json = /data-categories="([^"]*)"/.exec(html)?.[1]?.replace(/&quot;/g, '"') ?? '[]'
+    const analytics = (JSON.parse(json) as Array<{ id: string; cookies: unknown[] }>).find(
+      (category) => category.id === 'analytics'
+    )
+
+    expect(analytics?.cookies).toEqual([
+      { pattern: '^_ga$', parentDomains: true },
+      { pattern: '^_ga_[^=;\\s]*$', parentDomains: true }
+    ])
+  })
 })
 
 describe('renderConsentCookiesPage', () => {

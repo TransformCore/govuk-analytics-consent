@@ -1,4 +1,5 @@
 import { updateConsentMode } from './gtag.js'
+import { removeRejectedCookies } from './removal.js'
 import { writeConsent } from './storage.js'
 import { buildCategoryChoices } from '../consent/state.js'
 import { BANNER_ID } from '../ui/html.js'
@@ -32,6 +33,7 @@ export function initBanner(config: ClientConfig): void {
     const state = writeConsent(config.cookieName, config.cookieVersion, choices)
 
     updateConsentMode(config.categories, state)
+    removeRejectedCookies(config.categories, state)
     showConfirmation(banner, accepted ? 'accepted' : 'rejected')
   })
 }

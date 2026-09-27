@@ -143,8 +143,51 @@ describe('cookies table defaults', () => {
       name: 'my_policy',
       categoryId: 'essential',
       purpose: 'Custom purpose',
-      expiry: '1 day'
+      expiry: '1 day',
+      removeOnReject: 'never'
     })
+  })
+
+  it('defaults removeOnReject to host-only for non-essential cookies and host-and-parents for GA', () => {
+    const resolved = resolveOptions({
+      gtmContainerId: 'GTM-ABC123',
+      cookies: [{ name: 'hotjar', categoryId: 'analytics', purpose: 'Heatmaps', expiry: '1 year' }]
+    })
+    const removal = (name: string): string | undefined =>
+      resolved.cookies.find((cookie) => cookie.name === name)?.removeOnReject
+
+    expect(removal('hotjar')).toBe('host-only')
+    expect(removal('_ga')).toBe('host-and-parents')
+    expect(removal('_ga_<id>')).toBe('host-and-parents')
+    expect(removal(resolved.cookieName)).toBe('never')
+  })
+
+  it('rejects invalid removal settings', () => {
+    const base = { name: 'x', purpose: 'p', expiry: '1 day' }
+
+    expect(() =>
+      resolveOptions({ cookies: [{ ...base, categoryId: 'essential', removeOnReject: 'host-only' }] })
+    ).toThrow(/removeOnReject/)
+    expect(() =>
+      resolveOptions({
+        cookies: [{ ...base, categoryId: 'analytics', removeOnReject: 'always' as never }]
+      })
+    ).toThrow(/removeOnReject/)
+    expect(() => resolveOptions({ cookies: [{ ...base, categoryId: 'analytics', match: '' }] })).toThrow(
+      /match/
+    )
+    expect(() => resolveOptions({ cookies: [{ ...base, categoryId: 'analytics', match: '**' }] })).toThrow(
+      /match/
+    )
+    expect(() => resolveOptions({ cookies: [{ ...base, categoryId: 'analytics', match: 'a b*' }] })).toThrow(
+      /match/
+    )
+    expect(() => resolveOptions({ cookies: [{ ...base, categoryId: 'analytics', match: 'govuk_*' }] })).toThrow(
+      /consent cookie/
+    )
+    expect(() =>
+      resolveOptions({ cookies: [{ ...base, categoryId: 'analytics', match: 'govuk_*', removeOnReject: 'never' }] })
+    ).not.toThrow()
   })
 
   it('adds a user-supplied cookie alongside the defaults', () => {

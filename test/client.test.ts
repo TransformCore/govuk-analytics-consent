@@ -134,6 +134,44 @@ describe('browser consent manager', () => {
   })
 })
 
+describe('rejected cookie removal', () => {
+  beforeEach(() => {
+    document.cookie = '_ga=GA1.1.1; path=/'
+    document.cookie = '_ga_ABC123=GS1.1; path=/'
+  })
+
+  it('removes GA cookies when the banner is rejected', () => {
+    mount()
+    click('reject')
+
+    expect(document.cookie).not.toMatch(/_ga/)
+    expect(document.cookie).toContain(options.cookieName)
+  })
+
+  it('keeps GA cookies when the banner is accepted', () => {
+    mount()
+    click('accept')
+
+    expect(document.cookie).toContain('_ga=GA1.1.1')
+    expect(document.cookie).toContain('_ga_ABC123=GS1.1')
+  })
+
+  it('removes GA cookies on load when analytics was previously rejected', () => {
+    const consent = withCategoryChoices(createInitialState(options.cookieVersion), { analytics: false })
+    document.cookie = `${options.cookieName}=${serialiseConsent(consent)}; path=/`
+
+    mount({ consent })
+
+    expect(document.cookie).not.toMatch(/_ga/)
+  })
+
+  it('leaves GA cookies alone before a choice is made', () => {
+    mount()
+
+    expect(document.cookie).toContain('_ga=GA1.1.1')
+  })
+})
+
 describe('cookies page', () => {
   it('is a plain form: start() does not error and applies the stored choice on the next load', () => {
     // Simulates the fresh page load after the cookies page form posts and redirects back.

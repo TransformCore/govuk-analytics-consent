@@ -174,6 +174,44 @@ describe('express integration', () => {
 
     expect(response.text).not.toContain('govuk-cookie-banner')
   })
+
+  it('expires GA cookies on the host and parent domains when rejecting', async () => {
+    const response = await request(app)
+      .post('/govuk-analytics-consent/consent')
+      .set('host', 'svc.example.com')
+      .set('cookie', '_ga=GA1.1.1; _ga_ABC123=GS1.1')
+      .type('form')
+      .send({ preference: 'reject-all', returnUrl: '/start' })
+    const cookies = response.headers['set-cookie'] as unknown as string[]
+
+    expect(cookies).toContain('_ga=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Domain=example.com')
+    expect(cookies.filter((cookie) => cookie.startsWith('_ga_ABC123=;'))).toHaveLength(3)
+    expect(cookies.some((cookie) => cookie.startsWith('govuk_analytics_consent='))).toBe(true)
+  })
+
+  it('expires rejected cookies on later requests that still send them', async () => {
+    const consent = encodeURIComponent(
+      JSON.stringify({ version: 1, categories: { analytics: false }, updatedAt: new Date().toISOString() })
+    )
+    const rejected = await request(app)
+      .get('/start')
+      .set('host', 'svc.example.com')
+      .set('cookie', `govuk_analytics_consent=${consent}; _ga=GA1.1.1`)
+    const clean = await request(app).get('/start').set('cookie', `govuk_analytics_consent=${consent}`)
+
+    expect(rejected.headers['set-cookie']).toHaveLength(3)
+    expect(clean.headers['set-cookie']).toBeUndefined()
+  })
+
+  it('keeps GA cookies when analytics is accepted', async () => {
+    const response = await request(app)
+      .post('/govuk-analytics-consent/consent')
+      .set('cookie', '_ga=GA1.1.1')
+      .type('form')
+      .send({ preference: 'accept-all', returnUrl: '/start' })
+
+    expect(response.headers['set-cookie']).toHaveLength(1)
+  })
 })
 
 describe('registerGovUkAnalyticsConsent', () => {

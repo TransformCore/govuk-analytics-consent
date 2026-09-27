@@ -1,4 +1,5 @@
-import { readConsentFromHeader, serialiseConsent } from '../consent/cookie.js'
+import { parseCookieHeader, readConsentFromHeader, serialiseConsent } from '../consent/cookie.js'
+import { buildExpiryCookies, buildRemovalCategories, findCookiesToRemove } from '../consent/removal.js'
 import {
   buildCategoryChoices,
   createInitialState,
@@ -61,11 +62,14 @@ export interface ConsentRequestState {
   state: ConsentState
   hasChoice: boolean
   isCategoryAccepted: (categoryId: string) => boolean
+  /** `Set-Cookie` values expiring cookies the user has rejected but the browser still sent. */
+  expiryCookies: string[]
 }
 
 export function createConsentRequestState(
   options: ResolvedOptions,
-  cookieHeader?: string | null
+  cookieHeader?: string | null,
+  hostname?: string | null
 ): ConsentRequestState {
   const state = readConsentFromHeader(cookieHeader, options.cookieName, options.cookieVersion)
   const categories = new Map(options.categories.map((category) => [category.id, category]))
@@ -77,14 +81,36 @@ export function createConsentRequestState(
       const category = categories.get(categoryId)
 
       return category !== undefined && isCategoryAccepted(state, category)
-    }
+    },
+    expiryCookies: buildRequestExpiryCookies(options, state, cookieHeader, hostname)
   }
+}
+
+function buildRequestExpiryCookies(
+  options: ResolvedOptions,
+  state: ConsentState,
+  cookieHeader: string | null | undefined,
+  hostname: string | null | undefined
+): string[] {
+  const removals = findCookiesToRemove(
+    Object.keys(parseCookieHeader(cookieHeader)),
+    state,
+    buildRemovalCategories(options.categories, options.cookies)
+  )
+
+  return buildExpiryCookies(removals, hostname ?? '')
 }
 
 export interface ConsentPostResult {
   state: ConsentState
   cookieValue: string
   redirectTo: string
+  expiryCookies: string[]
+}
+
+export interface ConsentPostRequest {
+  cookieHeader?: string | null
+  hostname?: string | null
 }
 
 /**
@@ -95,7 +121,8 @@ export interface ConsentPostResult {
  */
 export function handleConsentPost(
   options: ResolvedOptions,
-  body: Record<string, unknown> | undefined
+  body: Record<string, unknown> | undefined,
+  { cookieHeader, hostname }: ConsentPostRequest = {}
 ): ConsentPostResult {
   const preference = body?.preference
   const isBannerChoice = preference === 'accept-all' || preference === 'reject-all'
@@ -110,7 +137,8 @@ export function handleConsentPost(
   return {
     state,
     cookieValue: serialiseConsent(state),
-    redirectTo: isBannerChoice ? returnUrl : appendQueryParam(returnUrl, 'cookies-updated', 'true')
+    redirectTo: isBannerChoice ? returnUrl : appendQueryParam(returnUrl, 'cookies-updated', 'true'),
+    expiryCookies: buildRequestExpiryCookies(options, state, cookieHeader, hostname)
   }
 }
 

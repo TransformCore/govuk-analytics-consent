@@ -234,7 +234,7 @@ All optional.
 | `serviceName` | `this service` | Used in the banner heading |
 | `messages` | English defaults | Partial message override set for banner, page copy, category labels, table headers and other user-facing strings |
 | `categories` | essential + analytics | `CookieCategory[]` metadata; add `essential: true` for always-on categories and `gtagSignals` for the Consent Mode signals a category controls |
-| `cookies` | none | `CookieDefinition[]` documenting cookies for the cookies page; merges with (and can override by `name`) the built-in defaults below |
+| `cookies` | none | `CookieDefinition[]` documenting cookies for the cookies page; merges with (and can override by `name`) the built-in defaults below. `match` and `removeOnReject` control [removal on rejection](#removing-cookies-on-rejection) |
 | `includeDefaultCookies` | `true` | Set to `false` to omit the built-in consent-cookie and GA rows entirely |
 | `secureCookie` | `NODE_ENV === 'production'` | |
 | `cookieMaxAge` | 1 year (seconds) | |
@@ -430,6 +430,46 @@ No extra markup is needed in your main layout; it's all part of `govukAnalyticsC
 
 See [examples/express/views/cookies.njk](examples/express/views/cookies.njk) and
 [examples/express/views/index.njk](examples/express/views/index.njk) for a full example.
+
+## Removing cookies on rejection
+
+Consent Mode stops GTM from setting new cookies, but it does not remove cookies that are already
+set. When a user rejects a category, or withdraws consent they gave earlier, the cookies documented
+for that category are expired:
+
+- **In the browser**, straight after a banner choice and on every page load once a choice exists.
+- **On the server**, in the consent `POST` response and on any later response to a request that
+  still sends a rejected cookie. This covers users without JavaScript and `HttpOnly` cookies.
+
+Nothing is removed before the user has made a choice. Each `cookies` entry controls this with
+`removeOnReject`:
+
+| `removeOnReject` | Behaviour |
+| --- | --- |
+| `'never'` | Leave the cookie alone (always the case for essential categories) |
+| `'host-only'` | Expire it on the current host (default for non-essential categories) |
+| `'host-and-parents'` | Expire it on the current host and every parent domain |
+
+Use `match` to match cookies whose names vary. It's a glob-style where only `*` is a wildcard (for
+example `_hj*` or `mp_*_mixpanel`); without it, `name` must match exactly. Mark cookies to keep
+with `'never'`:
+
+```js
+registerGovUkAnalyticsConsent(app, {
+  cookies: [
+    { name: '_hj<id>', match: '_hj*', categoryId: 'analytics', purpose: 'Hotjar', expiry: '1 year' },
+    { name: 'feedback_seen', categoryId: 'analytics', purpose: 'Survey', expiry: '1 year', removeOnReject: 'never' }
+  ]
+})
+```
+
+The built-in `_ga` and `_ga_<id>` rows use `'host-and-parents'`, because GA sets its cookies on the
+broadest domain it can (for example `.defra.gov.uk` rather than `payments.defra.gov.uk`). As a
+result, rejecting on one service also removes the GA cookies of other services on the same parent
+domain. That is what the user asked for, but those services will then see them as a new user.
+
+A user-supplied entry replaces a built-in one with the same `name`, including its `removeOnReject`
+and `match`. Only cookies set on `Path=/` are expired.
 
 ## Development
 

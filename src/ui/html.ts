@@ -1,4 +1,5 @@
 import { hasChoice, isCategoryAccepted } from '../consent/state.js'
+import { buildRemovalCategories } from '../consent/removal.js'
 import { headSnippet, nonceAttribute } from '../gtm/snippets.js'
 import { gtmNoscriptSnippet } from '../gtm/loader.js'
 import { escapeHtml } from '../shared/escape.js'
@@ -27,11 +28,15 @@ export function renderConsentNoscript(viewModel: ConsentViewModel): string {
 }
 
 export function renderConsentScripts(viewModel: ConsentViewModel): string {
+  const removals = new Map(
+    buildRemovalCategories(viewModel.categories, viewModel.cookies).map((category) => [category.id, category.cookies])
+  )
   const categoriesJson = JSON.stringify(
     viewModel.categories.map((category) => ({
       id: category.id,
       essential: category.essential === true,
-      gtagSignals: category.gtagSignals ?? []
+      gtagSignals: category.gtagSignals ?? [],
+      cookies: removals.get(category.id) ?? []
     }))
   )
 

@@ -71,20 +71,27 @@ export function registerHapi(
         payload: { parse: true, allow: 'application/x-www-form-urlencoded', maxBytes: 4096 }
       },
       handler: (request: any, h: any) => {
-        const result = handleConsentPost(resolved, request.payload)
+        const result = handleConsentPost(resolved, request.payload, {
+          cookieHeader: request.headers.cookie,
+          hostname: request.info?.hostname
+        })
+        const response = h.redirect(result.redirectTo).code(303)
 
-        return h
-          .redirect(result.redirectTo)
-          .code(303)
-          .state(resolved.cookieName, result.cookieValue, cookieSettings(resolved))
+        if (result.expiryCookies.length > 0) {
+          response.header('set-cookie', result.expiryCookies, { append: true })
+        }
+
+        return response.state(resolved.cookieName, result.cookieValue, cookieSettings(resolved))
       }
     }
   ])
 
-  server.ext('onPreAuth', (request: any, h: any) => {
+  // onRequest (not onPreAuth) so unrouted 404s still get rejected cookies expired.
+  server.ext('onRequest', (request: any, h: any) => {
     request.app.govukAnalyticsConsent = createConsentRequestState(
       resolved,
-      request.headers.cookie
+      request.headers.cookie,
+      request.info?.hostname
     )
 
     return h.continue
@@ -92,6 +99,12 @@ export function registerHapi(
 
   server.ext('onPreResponse', (request: any, h: any) => {
     const response = request.response
+    const expiryCookies: string[] = request.app.govukAnalyticsConsent?.expiryCookies ?? []
+    const isConsentPost = request.method === 'post' && request.route?.path === paths.consent
+
+    if (expiryCookies.length > 0 && !isConsentPost && response !== null && response !== undefined) {
+      appendSetCookie(response, expiryCookies)
+    }
 
     if (response?.variety === 'view') {
       const currentPath = `${request.url?.pathname ?? request.path ?? '/'}${request.url?.search ?? ''}`
@@ -132,6 +145,18 @@ function requestNonce(options: GovUkAnalyticsConsentOptions, request: any): stri
   const nonce = request.plugins?.blankie?.nonces?.script
 
   return typeof nonce === 'string' && nonce !== '' ? nonce : null
+}
+
+function appendSetCookie(response: any, values: string[]): void {
+  if (response.isBoom === true) {
+    const headers = response.output.headers
+    const existing = headers['set-cookie']
+
+    headers['set-cookie'] = [...(existing === undefined ? [] : [existing].flat()), ...values]
+    return
+  }
+
+  response.header('set-cookie', values, { append: true })
 }
 
 function cookieSettings(resolved: ResolvedOptions): Record<string, unknown> {

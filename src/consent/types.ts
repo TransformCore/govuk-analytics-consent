@@ -25,12 +25,22 @@ export interface CookieCategory extends ConsentModeCategory {
   shortName?: string
 }
 
+/**
+ * What to expire when the cookie's category is rejected: nothing, the cookie on the current host,
+ * or the current host plus every parent domain (needed for cookies GA sets on the broadest domain).
+ */
+export type CookieRemoval = 'never' | 'host-only' | 'host-and-parents'
+
 export interface CookieDefinition {
   name: string
   categoryId: string
   purpose: string
   expiry: string
   provider?: string
+  /** Glob matching the real cookie names, e.g. `_ga_*` for the `_ga_<id>` row; only `*` is a wildcard. Without it, `name` must match exactly. */
+  match?: string
+  /** Defaults to `'host-only'`, or `'never'` for essential categories. */
+  removeOnReject?: CookieRemoval
 }
 
 export interface ConsentMessages {

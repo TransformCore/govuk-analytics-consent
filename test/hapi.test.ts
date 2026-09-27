@@ -189,4 +189,37 @@ describe('hapi integration', () => {
     expect(response.result).not.toContain('govuk-cookie-banner')
     expect(response.result).toContain("gtag('consent','default'")
   })
+
+  it('expires GA cookies on the host and parent domains when rejecting', async () => {
+    const response = await server.inject({
+      method: 'POST',
+      url: '/govuk-analytics-consent/consent',
+      payload: 'preference=reject-all&returnUrl=/start',
+      headers: {
+        host: 'svc.example.com',
+        cookie: '_ga=GA1.1.1; _ga_ABC123=GS1.1',
+        'content-type': 'application/x-www-form-urlencoded'
+      }
+    })
+    const cookies = response.headers['set-cookie'] as string[]
+
+    expect(cookies).toContain('_ga=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Domain=example.com')
+    expect(cookies.filter((cookie) => cookie.startsWith('_ga_ABC123=;'))).toHaveLength(3)
+    expect(cookies.some((cookie) => cookie.startsWith('govuk_analytics_consent='))).toBe(true)
+  })
+
+  it('expires rejected cookies on later requests, including error responses', async () => {
+    const consent = encodeURIComponent(
+      JSON.stringify({ version: 1, categories: { analytics: false }, updatedAt: new Date().toISOString() })
+    )
+    const headers = { host: 'svc.example.com', cookie: `govuk_analytics_consent=${consent}; _ga=GA1.1.1` }
+    const page = await server.inject({ url: '/start', headers })
+    const notFound = await server.inject({ url: '/missing', headers })
+    const clean = await server.inject({ url: '/start', headers: { cookie: `govuk_analytics_consent=${consent}` } })
+
+    expect(page.headers['set-cookie']).toHaveLength(3)
+    expect(notFound.statusCode).toBe(404)
+    expect(notFound.headers['set-cookie']).toHaveLength(3)
+    expect(clean.headers['set-cookie']).toBeUndefined()
+  })
 })

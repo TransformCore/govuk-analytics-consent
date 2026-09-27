@@ -1,9 +1,11 @@
 import { buildDefaultCategories } from './categories.js'
 import { defaultCookieDefinitions } from './default-cookies.js'
+import { globToPattern } from './removal.js'
 import { normaliseRoutePrefix, safeInternalPath } from '../shared/url.js'
 import { resolveMessages } from './messages.js'
 import type {
   CookieDefinition,
+  CookieRemoval,
   GovUkAnalyticsConsentOptions,
   ResolvedOptions
 } from './types.js'
@@ -11,6 +13,8 @@ import type {
 export const GTM_CONTAINER_ID_PATTERN = /^GTM-[A-Z0-9]+$/
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365
+const COOKIE_REMOVALS: readonly CookieRemoval[] = ['never', 'host-only', 'host-and-parents']
+const COOKIE_GLOB = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
 
 export const defaults = {
   cookieName: 'govuk_analytics_consent',
@@ -88,9 +92,11 @@ function resolveCookieDefinitions(
   const includeDefaults = options.includeDefaultCookies ?? true
   const defaults = includeDefaults ? defaultCookieDefinitions(defaultsContext) : []
   const merged = mergeCookieDefinitions(defaults, options.cookies ?? [])
-  const categoryIds = new Set(categories.map((category) => category.id))
+  const categoriesById = new Map(categories.map((category) => [category.id, category]))
 
-  for (const cookie of merged) {
+  return merged.map((cookie) => {
+    const category = categoriesById.get(cookie.categoryId)
+
     if (
       typeof cookie.name !== 'string' ||
       cookie.name.trim() === '' ||
@@ -98,13 +104,36 @@ function resolveCookieDefinitions(
       cookie.purpose.trim() === '' ||
       typeof cookie.expiry !== 'string' ||
       cookie.expiry.trim() === '' ||
-      !categoryIds.has(cookie.categoryId)
+      category === undefined
     ) {
       throw new Error(`Invalid cookie definition: ${JSON.stringify(cookie)}`)
     }
-  }
 
-  return merged
+    const essential = category.essential === true
+    const removeOnReject = cookie.removeOnReject ?? (essential ? 'never' : 'host-only')
+
+    if (!COOKIE_REMOVALS.includes(removeOnReject) || (essential && removeOnReject !== 'never')) {
+      throw new Error(`Invalid removeOnReject for cookie "${cookie.name}": ${String(cookie.removeOnReject)}`)
+    }
+
+    if (
+      cookie.match !== undefined &&
+      (typeof cookie.match !== 'string' || !COOKIE_GLOB.test(cookie.match) || /^\*+$/.test(cookie.match))
+    ) {
+      throw new Error(`Invalid match for cookie "${cookie.name}": ${String(cookie.match)}`)
+    }
+
+    const matchesConsentCookie =
+      cookie.match === undefined
+        ? cookie.name === defaultsContext.cookieName
+        : new RegExp(globToPattern(cookie.match)).test(defaultsContext.cookieName)
+
+    if (removeOnReject !== 'never' && matchesConsentCookie) {
+      throw new Error(`The consent cookie "${defaultsContext.cookieName}" cannot be removed on reject`)
+    }
+
+    return { ...cookie, removeOnReject }
+  })
 }
 
 /** A user-supplied entry overrides a default with the same `name`. */

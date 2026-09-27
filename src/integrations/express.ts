@@ -39,9 +39,15 @@ export function registerExpress(
 
   app.use((req: any, res: any, next: () => void) => {
     let context: ConsentContext | null = null
-    const requestConsent = createConsentRequestState(resolved, req.headers?.cookie)
+    const requestConsent = createConsentRequestState(resolved, req.headers?.cookie, req.hostname)
 
     req.govukAnalyticsConsent = requestConsent
+
+    const isConsentPost = req.method === 'POST' && req.path === paths.consent
+
+    if (requestConsent.expiryCookies.length > 0 && !isConsentPost) {
+      res.append('Set-Cookie', requestConsent.expiryCookies)
+    }
 
     Object.defineProperty(res.locals, 'govukAnalyticsConsent', {
       configurable: true,
@@ -82,7 +88,14 @@ export function registerExpress(
 
   app.post(paths.consent, (req: any, res: any) => {
     void withBody(req).then((body) => {
-      const result = handleConsentPost(resolved, body)
+      const result = handleConsentPost(resolved, body, {
+        cookieHeader: req.headers?.cookie,
+        hostname: req.hostname
+      })
+
+      if (result.expiryCookies.length > 0) {
+        res.append('Set-Cookie', result.expiryCookies)
+      }
 
       res.cookie(resolved.cookieName, result.cookieValue, {
         path: resolved.cookie.path,

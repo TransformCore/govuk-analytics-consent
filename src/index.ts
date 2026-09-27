@@ -89,6 +89,7 @@ export type {
   ConsentState,
   CookieCategory,
   CookieDefinition,
+  CookieRemoval,
   GovUkAnalyticsConsentOptions,
   ResolvedOptions
 } from './consent/types.js'

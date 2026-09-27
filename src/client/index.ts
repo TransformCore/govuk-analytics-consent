@@ -1,10 +1,10 @@
 import { initBanner } from './banner.js'
 import { updateConsentMode } from './gtag.js'
+import { removeRejectedCookies } from './removal.js'
 import { readConsent } from './storage.js'
 import { hasChoice } from '../consent/state.js'
 import { CLIENT_SCRIPT_MODULE } from '../ui/html.js'
-import type { ClientConfig } from './config.js'
-import type { ConsentModeCategory } from '../consent/types.js'
+import type { ClientCategory, ClientConfig } from './config.js'
 
 function readConfig(): ClientConfig | null {
   const script =
@@ -22,7 +22,7 @@ function readConfig(): ClientConfig | null {
   return { cookieName, cookieVersion, categories }
 }
 
-function parseCategories(value: string | undefined): ConsentModeCategory[] | null {
+function parseCategories(value: string | undefined): ClientCategory[] | null {
   if (value === undefined) {
     return null
   }
@@ -30,7 +30,7 @@ function parseCategories(value: string | undefined): ConsentModeCategory[] | nul
   try {
     const parsed: unknown = JSON.parse(value)
 
-    return Array.isArray(parsed) ? (parsed as ConsentModeCategory[]) : null
+    return Array.isArray(parsed) ? (parsed as ClientCategory[]) : null
   } catch {
     return null
   }
@@ -47,6 +47,7 @@ export function start(): void {
 
   if (hasChoice(consent)) {
     updateConsentMode(config.categories, consent)
+    removeRejectedCookies(config.categories, consent)
   }
 
   initBanner(config)
