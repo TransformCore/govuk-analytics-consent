@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { gaCookies } from '../src/consent/default-cookies.js'
 import { resolveOptions } from '../src/consent/options.js'
 import { createInitialState, withCategoryChoices } from '../src/consent/state.js'
 import {
@@ -87,7 +88,10 @@ describe('renderConsentScripts', () => {
   })
 
   it('includes the cookie removal matchers for each category', () => {
-    const resolved = resolveOptions({ gtmContainerId: 'GTM-ABC123' })
+    const resolved = resolveOptions({
+      gtmContainerId: 'GTM-ABC123',
+      cookies: [gaCookies('G-ABC123')]
+    })
     const html = renderConsentScripts(buildViewModel(resolved))
     const json = /data-categories="([^"]*)"/.exec(html)?.[1]?.replace(/&quot;/g, '"') ?? '[]'
     const analytics = (JSON.parse(json) as Array<{ id: string; cookies: unknown[] }>).find(
@@ -147,14 +151,14 @@ describe('renderConsentCookiesPage', () => {
   })
 
   it('lists the default GA cookies for the analytics category', () => {
-    const html = cookiesPage()
+    const html = cookiesPage({ cookies: [gaCookies('G-ABC123')] })
 
-    expect(html).toContain('_ga')
+    expect(html).toContain('_ga_ABC123')
     expect(html).toContain('name="cookies[analytics]"')
   })
 
-  it('omits the analytics cookies table when GTM is not configured', () => {
-    const resolved = resolveOptions({})
+  it('omits the analytics cookies table when GA rows are not supplied', () => {
+    const resolved = resolveOptions({ gtmContainerId: 'GTM-ABC123' })
     const html = renderConsentCookiesPage(buildViewModel(resolved, { consent: createInitialState(1) }))
 
     expect(html).not.toContain('_ga')

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest'
+import { gaCookies } from '../src/consent/default-cookies.js'
 import { resolveOptions } from '../src/consent/options.js'
 import { createInitialState, withCategoryChoices } from '../src/consent/state.js'
 import { serialiseConsent } from '../src/consent/cookie.js'
@@ -9,7 +10,11 @@ import { start } from '../src/client/index.js'
 import { readConsent } from '../src/client/storage.js'
 import type { ConsentState } from '../src/consent/types.js'
 
-const options = resolveOptions({ gtmContainerId: 'GTM-ABC123', consentWaitForUpdate: 500 })
+const options = resolveOptions({
+  gtmContainerId: 'GTM-ABC123',
+  cookies: [gaCookies('G-ABC123')],
+  consentWaitForUpdate: 500
+})
 
 function mount({ consent, cookiesPage = false }: { consent?: ConsentState; cookiesPage?: boolean } = {}): void {
   const viewModel = buildViewModel(options, { consent, currentPath: '/start' })

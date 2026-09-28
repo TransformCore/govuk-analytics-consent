@@ -54,7 +54,7 @@ export {
 } from './consent/categories.js'
 export { defaultMessages, resolveMessages, welshMessages } from './consent/messages.js'
 export type { ConsentMessages } from './consent/types.js'
-export { defaultCookieDefinitions } from './consent/default-cookies.js'
+export { defaultCookieDefinitions, gaCookies } from './consent/default-cookies.js'
 export {
   parseConsentCookie,
   serialiseConsent,
@@ -89,6 +89,8 @@ export type {
   ConsentState,
   CookieCategory,
   CookieDefinition,
+  CookieDefinitionFactory,
+  CookieDefinitionInput,
   CookieRemoval,
   GovUkAnalyticsConsentOptions,
   ResolvedOptions

@@ -54,7 +54,6 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
   const cookies = resolveCookieDefinitions(options, categories, {
     cookieName,
     cookieMaxAge,
-    gtmContainerId: resolvedGtmContainerId,
     messages
   })
 
@@ -85,13 +84,20 @@ function resolveCookieDefinitions(
   defaultsContext: {
     cookieName: string
     cookieMaxAge: number
-    gtmContainerId: string | null
     messages: ResolvedOptions['messages']
   }
 ): CookieDefinition[] {
   const includeDefaults = options.includeDefaultCookies ?? true
   const defaults = includeDefaults ? defaultCookieDefinitions(defaultsContext) : []
-  const merged = mergeCookieDefinitions(defaults, options.cookies ?? [])
+  const suppliedCookies: CookieDefinition[] = []
+
+  for (const cookie of options.cookies ?? []) {
+    suppliedCookies.push(
+      ...(typeof cookie === 'function' ? cookie(defaultsContext.messages) : [cookie])
+    )
+  }
+
+  const merged = mergeCookieDefinitions(defaults, suppliedCookies)
   const categoriesById = new Map(categories.map((category) => [category.id, category]))
 
   return merged.map((cookie) => {

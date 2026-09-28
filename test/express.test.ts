@@ -2,7 +2,7 @@ import express from 'express'
 import nunjucks from 'nunjucks'
 import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { registerGovUkAnalyticsConsent } from '../src/index.js'
+import { gaCookies, registerGovUkAnalyticsConsent } from '../src/index.js'
 import { govukAnalyticsConsentTemplatePath } from '../src/ui/template-path.js'
 import type { ConsentRequestState } from '../src/integrations/core.js'
 
@@ -16,7 +16,10 @@ beforeEach(() => {
     autoescape: true
   })
 
-  registerGovUkAnalyticsConsent(app, { gtmContainerId: 'GTM-ABC123' })
+  registerGovUkAnalyticsConsent(app, {
+    gtmContainerId: 'GTM-ABC123',
+    cookies: [gaCookies('G-ABC123')]
+  })
 
   app.get('/start', (_req, res) => res.render('page.njk'))
   app.get('/request-consent/:category', (req, res) => {
@@ -139,7 +142,10 @@ describe('express integration', () => {
   it('works when the service already mounts a body parser', async () => {
     const parsed = express()
     parsed.use(express.urlencoded({ extended: false }))
-    registerGovUkAnalyticsConsent(parsed, { gtmContainerId: 'GTM-ABC123' })
+    registerGovUkAnalyticsConsent(parsed, {
+      gtmContainerId: 'GTM-ABC123',
+      cookies: [gaCookies('G-ABC123')]
+    })
 
     const response = await request(parsed)
       .post('/govuk-analytics-consent/consent')

@@ -2,6 +2,7 @@ import express from 'express'
 import nunjucks from 'nunjucks'
 import {
   defaultCategories,
+  gaCookies,
   personalizationCategory,
   registerGovUkAnalyticsConsent,
   govukAnalyticsConsentTemplatePath
@@ -14,13 +15,14 @@ nunjucks.configure(
   { express: app, autoescape: true }
 )
 
-// Reads GTM_CONTAINER_ID from the environment; the consent cookie and GA rows are
-// documented automatically. This example also enables personalization consent.
+// Reads GTM_CONTAINER_ID and GA_MEASUREMENT_ID from the environment; gaCookies()
+// uses the measurement ID when set, otherwise documents the generic GA4 row.
 registerGovUkAnalyticsConsent(app, {
   serviceName: 'Example service',
   cookiesPageUrl: '/cookies',
   categories: [...defaultCategories, personalizationCategory],
   cookies: [
+    gaCookies(),
     { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
     {
       name: 'example_preferences',

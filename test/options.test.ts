@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { resolveOptions } from '../src/consent/options.js'
+import { gaCookies } from '../src/consent/default-cookies.js'
 import { safeInternalPath, normaliseRoutePrefix } from '../src/shared/url.js'
 
 const originalContainerId = process.env.GTM_CONTAINER_ID
+const originalGaMeasurementId = process.env.GA_MEASUREMENT_ID
 const originalNodeEnv = process.env.NODE_ENV
 
-function restore(key: 'GTM_CONTAINER_ID' | 'NODE_ENV', value: string | undefined): void {
+function restore(key: 'GTM_CONTAINER_ID' | 'GA_MEASUREMENT_ID' | 'NODE_ENV', value: string | undefined): void {
   if (value === undefined) {
     delete process.env[key]
   } else {
@@ -15,10 +17,12 @@ function restore(key: 'GTM_CONTAINER_ID' | 'NODE_ENV', value: string | undefined
 
 beforeEach(() => {
   delete process.env.GTM_CONTAINER_ID
+  delete process.env.GA_MEASUREMENT_ID
 })
 
 afterEach(() => {
   restore('GTM_CONTAINER_ID', originalContainerId)
+  restore('GA_MEASUREMENT_ID', originalGaMeasurementId)
   restore('NODE_ENV', originalNodeEnv)
 })
 
@@ -120,17 +124,89 @@ describe('cookies table defaults', () => {
     )
   })
 
-  it('adds the standard GA cookies once a GTM container is configured', () => {
-    const resolved = resolveOptions({ gtmContainerId: 'GTM-ABC123' })
+  it('generates GA cookie rows from a full measurement ID', () => {
+    const resolved = resolveOptions({
+      cookies: [gaCookies('G-ABC123')],
+      messages: {
+        gaCookiePurpose: 'Custom analytics purpose',
+        gaSessionCookiePurpose: 'Custom session purpose',
+        gaCookieProvider: 'Custom provider',
+        gaCookieExpiry: 'Custom duration'
+      }
+    })
 
-    expect(resolved.cookies.some((cookie) => cookie.name === '_ga')).toBe(true)
-    expect(resolved.cookies.every((cookie) => cookie.categoryId !== 'analytics' || cookie.name.startsWith('_ga'))).toBe(true)
+    expect(resolved.cookies).toContainEqual(
+      expect.objectContaining({
+        name: '_ga',
+        categoryId: 'analytics',
+        purpose: 'Custom analytics purpose',
+        provider: 'Custom provider',
+        expiry: 'Custom duration',
+        removeOnReject: 'host-and-parents'
+      })
+    )
+    expect(resolved.cookies).toContainEqual(
+      expect.objectContaining({
+        name: '_ga_ABC123',
+        categoryId: 'analytics',
+        purpose: 'Custom session purpose',
+        provider: 'Custom provider',
+        expiry: 'Custom duration',
+        match: '_ga_*',
+        removeOnReject: 'host-and-parents'
+      })
+    )
   })
 
-  it('omits the GA cookies when no GTM container is configured', () => {
-    const resolved = resolveOptions({})
+  it('uses a generic GA4 cookie name when no measurement ID is supplied', () => {
+    const resolved = resolveOptions({ cookies: [gaCookies()] })
 
-    expect(resolved.cookies.some((cookie) => cookie.name === '_ga')).toBe(false)
+    expect(resolved.cookies.map((cookie) => cookie.name)).toEqual([
+      'govuk_analytics_consent',
+      '_ga',
+      '_ga_<id>'
+    ])
+  })
+
+  it('reads the GA measurement ID from the environment when no ID is passed', () => {
+    process.env.GA_MEASUREMENT_ID = 'G-ENV123'
+    const resolved = resolveOptions({ cookies: [gaCookies()] })
+
+    expect(resolved.cookies.map((cookie) => cookie.name)).toEqual([
+      'govuk_analytics_consent',
+      '_ga',
+      '_ga_ENV123'
+    ])
+  })
+
+  it('prefers an explicit GA measurement ID over the environment', () => {
+    process.env.GA_MEASUREMENT_ID = 'G-ENV123'
+    const resolved = resolveOptions({ cookies: [gaCookies('G-EXPLICIT456')] })
+
+    expect(resolved.cookies.some((cookie) => cookie.name === '_ga_EXPLICIT456')).toBe(true)
+    expect(resolved.cookies.some((cookie) => cookie.name === '_ga_ENV123')).toBe(false)
+  })
+
+  it.each(['GA-12345', 'G-abc123', 'UA-123456', 'G-ABC 123'])(
+    'rejects the malformed GA measurement ID %s',
+    (value) => {
+      expect(() => gaCookies(value)).toThrow(/Invalid GA measurement ID/)
+    }
+  )
+
+  it('does not add GA rows unless explicitly supplied', () => {
+    const defaults = resolveOptions({ gtmContainerId: 'GTM-ABC123' })
+    const withGaCookies = resolveOptions({
+      gtmContainerId: 'GTM-ABC123',
+      cookies: [gaCookies('G-ABC123')]
+    })
+
+    expect(defaults.cookies.some((cookie) => cookie.categoryId === 'analytics')).toBe(false)
+    expect(withGaCookies.cookies.map((cookie) => cookie.name)).toEqual([
+      'govuk_analytics_consent',
+      '_ga',
+      '_ga_ABC123'
+    ])
   })
 
   it('lets a user-supplied cookie override a default with the same name', () => {
@@ -151,14 +227,17 @@ describe('cookies table defaults', () => {
   it('defaults removeOnReject to host-only for non-essential cookies and host-and-parents for GA', () => {
     const resolved = resolveOptions({
       gtmContainerId: 'GTM-ABC123',
-      cookies: [{ name: 'hotjar', categoryId: 'analytics', purpose: 'Heatmaps', expiry: '1 year' }]
+      cookies: [
+        gaCookies('G-ABC123'),
+        { name: 'hotjar', categoryId: 'analytics', purpose: 'Heatmaps', expiry: '1 year' }
+      ]
     })
     const removal = (name: string): string | undefined =>
       resolved.cookies.find((cookie) => cookie.name === name)?.removeOnReject
 
     expect(removal('hotjar')).toBe('host-only')
     expect(removal('_ga')).toBe('host-and-parents')
-    expect(removal('_ga_<id>')).toBe('host-and-parents')
+    expect(removal('_ga_ABC123')).toBe('host-and-parents')
     expect(removal(resolved.cookieName)).toBe('never')
   })
 

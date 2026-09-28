@@ -43,6 +43,10 @@ export interface CookieDefinition {
   removeOnReject?: CookieRemoval
 }
 
+export type CookieDefinitionFactory = (messages: ConsentMessages) => CookieDefinition[]
+
+export type CookieDefinitionInput = CookieDefinition | CookieDefinitionFactory
+
 export interface ConsentMessages {
   bannerTitle: string
   bannerIntro: string
@@ -73,6 +77,8 @@ export interface ConsentMessages {
   defaultCookiePurpose: string
   gaCookiePurpose: string
   gaSessionCookiePurpose: string
+  gaCookieProvider: string
+  gaCookieExpiry: string
   tableHeaderName: string
   tableHeaderPurpose: string
   tableHeaderExpiry: string
@@ -93,9 +99,9 @@ export interface GovUkAnalyticsConsentOptions {
   /** Consent Mode `wait_for_update` in ms. `false` or `0` omits the property. */
   consentWaitForUpdate?: number | false
   categories?: CookieCategory[]
-  /** Documents cookies for the cookies page; merges with (and can override by `name`) the built-in defaults. */
-  cookies?: CookieDefinition[]
-  /** Set to `false` to omit the built-in consent-cookie and GA rows entirely. Defaults to `true`. */
+  /** Cookie definitions or factories called with the resolved messages; merges with built-in cookies by `name`. */
+  cookies?: CookieDefinitionInput[]
+  /** Set to `false` to omit the built-in consent-cookie row. Defaults to `true`. */
   includeDefaultCookies?: boolean
   serviceName?: string
   messages?: Partial<ConsentMessages>

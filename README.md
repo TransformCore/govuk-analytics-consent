@@ -31,27 +31,37 @@ GTM_CONTAINER_ID=GTM-XXXXXXX
 
 ```js
 import govukAnalyticsConsent from '@transform-uk/govuk-analytics-consent/hapi'
-import { govukAnalyticsConsentTemplatePath } from '@transform-uk/govuk-analytics-consent'
+import { gaCookies, govukAnalyticsConsentTemplatePath } from '@transform-uk/govuk-analytics-consent'
 
 // Add the package templates to your Nunjucks search paths.
 const searchPaths = [govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-frontend/dist', 'src/views']
 
 await server.register({
   plugin: govukAnalyticsConsent,
-  options: { serviceName: 'Apply for a licence' }
+  options: {
+    serviceName: 'Apply for a licence',
+    cookies: [gaCookies()]
+  }
 })
 ```
 
 ### Express
 
 ```js
-import { registerGovUkAnalyticsConsent, govukAnalyticsConsentTemplatePath } from '@transform-uk/govuk-analytics-consent'
+import {
+  gaCookies,
+  registerGovUkAnalyticsConsent,
+  govukAnalyticsConsentTemplatePath
+} from '@transform-uk/govuk-analytics-consent'
 
 nunjucks.configure([govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-frontend/dist', 'views'], {
   express: app
 })
 
-registerGovUkAnalyticsConsent(app, { serviceName: 'Apply for a licence' })
+registerGovUkAnalyticsConsent(app, {
+  serviceName: 'Apply for a licence',
+  cookies: [gaCookies()]
+})
 ```
 
 Hapi has a native plugin contract, so its adapter can be passed directly to `server.register()`.
@@ -234,11 +244,30 @@ All optional.
 | `serviceName` | `this service` | Used in the banner heading |
 | `messages` | English defaults | Partial message override set for banner, page copy, category labels, table headers and other user-facing strings |
 | `categories` | essential + analytics | `CookieCategory[]` metadata; add `essential: true` for always-on categories and `gtagSignals` for the Consent Mode signals a category controls |
-| `cookies` | none | `CookieDefinition[]` documenting cookies for the cookies page; merges with (and can override by `name`) the built-in defaults below. `match` and `removeOnReject` control [removal on rejection](#removing-cookies-on-rejection) |
-| `includeDefaultCookies` | `true` | Set to `false` to omit the built-in consent-cookie and GA rows entirely |
+| `cookies` | none | Cookie definitions or factories for the cookies page; factories receive the resolved `messages` object. Entries merge with (and can override by `name`) the built-in consent-cookie row. `match` and `removeOnReject` control [removal on rejection](#removing-cookies-on-rejection) |
+| `includeDefaultCookies` | `true` | Set to `false` to omit the built-in consent-cookie row |
 | `secureCookie` | `NODE_ENV === 'production'` | |
 | `cookieMaxAge` | 1 year (seconds) | |
 | `getNonce` | Blankie's script nonce in Hapi; otherwise none | `(request) => string` — applied to every injected `<script>` for CSP; an explicit callback overrides automatic Blankie detection |
+
+## Google Analytics integration
+
+GTM loads from `GTM_CONTAINER_ID`. GA cookie rows are opt-in: add the exported `gaCookies()` helper
+to `cookies` to include both `_ga` and the GA4 cookie row. With no argument, the helper reads
+`GA_MEASUREMENT_ID`; pass a `G-...` measurement ID explicitly to override that environment value.
+If neither is set, the cookies page uses the generic `_ga_<id>` name. The helper uses the resolved
+message copy and keeps wildcard matching for cookie removal.
+
+```js
+import { gaCookies, registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+
+registerGovUkAnalyticsConsent(app, { cookies: [gaCookies()] })
+```
+
+The rows returned by `gaCookies()` use `'host-and-parents'`, because GA sets its cookies on the
+broadest domain it can (for example `.defra.gov.uk` rather than `payments.defra.gov.uk`). As a
+result, rejecting on one service also removes the GA cookies of other services on the same parent
+domain. Those services will then see them as a new user.
 
 ### Additional Consent Mode categories
 
@@ -462,11 +491,6 @@ registerGovUkAnalyticsConsent(app, {
   ]
 })
 ```
-
-The built-in `_ga` and `_ga_<id>` rows use `'host-and-parents'`, because GA sets its cookies on the
-broadest domain it can (for example `.defra.gov.uk` rather than `payments.defra.gov.uk`). As a
-result, rejecting on one service also removes the GA cookies of other services on the same parent
-domain. That is what the user asked for, but those services will then see them as a new user.
 
 A user-supplied entry replaces a built-in one with the same `name`, including its `removeOnReject`
 and `match`. Only cookies set on `Path=/` are expired.

@@ -4,6 +4,7 @@ import Vision from '@hapi/vision'
 import nunjucks from 'nunjucks'
 import {
   defaultCategories,
+  gaCookies,
   personalizationCategory,
   govukAnalyticsConsentPlugin,
   govukAnalyticsConsentTemplatePath
@@ -34,8 +35,8 @@ server.views({
   path: 'examples/hapi/views'
 })
 
-// Reads GTM_CONTAINER_ID from the environment; the consent cookie and GA rows are
-// documented automatically. This example also enables personalization consent.
+// Reads GTM_CONTAINER_ID and GA_MEASUREMENT_ID from the environment; gaCookies()
+// uses the measurement ID when set, otherwise documents the generic GA4 row.
 await server.register({
   plugin: govukAnalyticsConsentPlugin,
   options: {
@@ -43,6 +44,7 @@ await server.register({
     cookiesPageUrl: '/cookies',
     categories: [...defaultCategories, personalizationCategory],
     cookies: [
+      gaCookies(),
       { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
       {
         name: 'example_preferences',
