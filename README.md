@@ -243,7 +243,7 @@ All optional.
 | `consentWaitForUpdate` | `500` | Consent Mode `wait_for_update` in ms; `false` omits it |
 | `serviceName` | `this service` | Used in the banner heading |
 | `messages` | English defaults | Partial message override set for banner, page copy, category labels, table headers and other user-facing strings |
-| `categories` | essential + analytics | `CookieCategory[]` metadata; add `essential: true` for always-on categories and `gtagSignals` for the Consent Mode signals a category controls |
+| `categories` | essential + analytics | Built-in preset names or custom category objects; presets use the resolved messages. Add `essential: true` for always-on custom categories and `gtagSignals` for the Consent Mode signals they control |
 | `cookies` | none | Cookie definitions or factories for the cookies page; factories receive the resolved `messages` object. Entries merge with (and can override by `name`) the built-in consent-cookie row. `match` and `removeOnReject` control [removal on rejection](#removing-cookies-on-rejection) |
 | `includeDefaultCookies` | `true` | Set to `false` to omit the built-in consent-cookie row |
 | `secureCookie` | `NODE_ENV === 'production'` | |
@@ -412,6 +412,21 @@ import { registerGovUkAnalyticsConsent, welshMessages } from '@transform-uk/govu
 registerGovUkAnalyticsConsent(server, {
   serviceName: 'Gwasanaeth',
   messages: welshMessages
+})
+```
+
+`messages` localizes the interface copy. Category factories receive the resolved messages too, so
+they can localize category titles and descriptions:
+
+```js
+import {
+  registerGovUkAnalyticsConsent,
+  welshMessages
+} from '@transform-uk/govuk-analytics-consent'
+
+registerGovUkAnalyticsConsent(server, {
+  messages: welshMessages,
+  categories: ['default', 'personalization']
 })
 ```
 

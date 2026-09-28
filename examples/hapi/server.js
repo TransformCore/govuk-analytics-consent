@@ -3,9 +3,7 @@ import Inert from '@hapi/inert'
 import Vision from '@hapi/vision'
 import nunjucks from 'nunjucks'
 import {
-  defaultCategories,
   gaCookies,
-  personalizationCategory,
   govukAnalyticsConsentPlugin,
   govukAnalyticsConsentTemplatePath
 } from '../../dist/index.js'
@@ -42,7 +40,7 @@ await server.register({
   options: {
     serviceName: 'Example service',
     cookiesPageUrl: '/cookies',
-    categories: [...defaultCategories, personalizationCategory],
+    categories: ['default', 'personalization'],
     cookies: [
       gaCookies(),
       { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },

@@ -46,7 +46,9 @@ export type {
 export {
   advertisingCategory,
   analyticsCategory,
+  buildDefaultCategories,
   buildAdditionalConsentModeCategories,
+  buildPersonalizationCategory,
   essentialCategory,
   functionalityCategory,
   personalizationCategory,
@@ -88,6 +90,8 @@ export {
 export type {
   ConsentState,
   CookieCategory,
+  CookieCategoryInput,
+  CookieCategoryPreset,
   CookieDefinition,
   CookieDefinitionFactory,
   CookieDefinitionInput,

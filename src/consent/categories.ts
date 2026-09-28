@@ -1,5 +1,5 @@
 import { defaultMessages } from './messages.js'
-import type { ConsentMessages, CookieCategory } from './types.js'
+import type { ConsentMessages, CookieCategory, CookieCategoryPreset } from './types.js'
 
 export function buildDefaultCategories(messages: ConsentMessages = defaultMessages): CookieCategory[] {
   return [buildEssentialCategory(messages), buildAnalyticsCategory(messages)]
@@ -13,6 +13,28 @@ export function buildAdditionalConsentModeCategories(
     buildFunctionalityCategory(messages),
     buildPersonalizationCategory(messages)
   ]
+}
+
+export function buildCategoryPreset(
+  preset: CookieCategoryPreset,
+  messages: ConsentMessages
+): CookieCategory[] {
+  switch (preset) {
+    case 'default':
+      return buildDefaultCategories(messages)
+    case 'essential':
+      return [buildEssentialCategory(messages)]
+    case 'analytics':
+      return [buildAnalyticsCategory(messages)]
+    case 'advertising':
+      return [buildAdvertisingCategory(messages)]
+    case 'functionality':
+      return [buildFunctionalityCategory(messages)]
+    case 'personalization':
+      return [buildPersonalizationCategory(messages)]
+    default:
+      throw new Error(`Unknown category preset: ${String(preset)}`)
+  }
 }
 
 function buildEssentialCategory(messages: ConsentMessages): CookieCategory {
@@ -55,7 +77,7 @@ function buildFunctionalityCategory(messages: ConsentMessages): CookieCategory {
   }
 }
 
-function buildPersonalizationCategory(messages: ConsentMessages): CookieCategory {
+export function buildPersonalizationCategory(messages: ConsentMessages): CookieCategory {
   return {
     id: 'personalization',
     title: messages.personalizationCategoryTitle,

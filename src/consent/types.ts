@@ -25,6 +25,16 @@ export interface CookieCategory extends ConsentModeCategory {
   shortName?: string
 }
 
+export type CookieCategoryPreset =
+  | 'default'
+  | 'essential'
+  | 'analytics'
+  | 'advertising'
+  | 'functionality'
+  | 'personalization'
+
+export type CookieCategoryInput = CookieCategory | CookieCategoryPreset
+
 /**
  * What to expire when the cookie's category is rejected: nothing, the cookie on the current host,
  * or the current host plus every parent domain (needed for cookies GA sets on the broadest domain).
@@ -98,7 +108,8 @@ export interface GovUkAnalyticsConsentOptions {
   cookiesPageUrl?: string
   /** Consent Mode `wait_for_update` in ms. `false` or `0` omits the property. */
   consentWaitForUpdate?: number | false
-  categories?: CookieCategory[]
+  /** Built-in category presets or custom category objects. Presets use the resolved messages. */
+  categories?: CookieCategoryInput[]
   /** Cookie definitions or factories called with the resolved messages; merges with built-in cookies by `name`. */
   cookies?: CookieDefinitionInput[]
   /** Set to `false` to omit the built-in consent-cookie row. Defaults to `true`. */

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { resolveOptions } from '../src/consent/options.js'
 import { gaCookies } from '../src/consent/default-cookies.js'
+import { welshMessages } from '../src/consent/messages.js'
 import { safeInternalPath, normaliseRoutePrefix } from '../src/shared/url.js'
 
 const originalContainerId = process.env.GTM_CONTAINER_ID
@@ -27,6 +28,25 @@ afterEach(() => {
 })
 
 describe('resolveOptions', () => {
+  it('builds category presets with the resolved localized messages', () => {
+    const resolved = resolveOptions({
+      messages: welshMessages,
+      categories: ['default', 'personalization']
+    })
+
+    expect(resolved.categories.map(({ title, description }) => [title, description])).toEqual([
+      [welshMessages.essentialCategoryTitle, welshMessages.essentialCategoryDescription],
+      [welshMessages.analyticsCategoryTitle, welshMessages.analyticsCategoryDescription],
+      [welshMessages.personalizationCategoryTitle, welshMessages.personalizationCategoryDescription]
+    ])
+  })
+
+  it('rejects an unknown category preset', () => {
+    expect(() => resolveOptions({ categories: ['custom' as never] })).toThrow(
+      'Unknown category preset: custom'
+    )
+  })
+
   it('applies documented defaults', () => {
     const resolved = resolveOptions()
 

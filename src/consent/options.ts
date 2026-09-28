@@ -1,4 +1,4 @@
-import { buildDefaultCategories } from './categories.js'
+import { buildCategoryPreset, buildDefaultCategories } from './categories.js'
 import { defaultCookieDefinitions } from './default-cookies.js'
 import { globToPattern } from './removal.js'
 import { normaliseRoutePrefix, safeInternalPath } from '../shared/url.js'
@@ -47,7 +47,11 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
   }
 
   const messages = resolveMessages(options.messages)
-  const categories = options.categories ?? buildDefaultCategories(messages)
+  const categories = options.categories === undefined
+    ? buildDefaultCategories(messages)
+    : options.categories.flatMap((category) =>
+        typeof category === 'string' ? buildCategoryPreset(category, messages) : [category]
+      )
   const cookieMaxAge = options.cookieMaxAge ?? ONE_YEAR_SECONDS
   const resolvedGtmContainerId = gtmContainerId === '' ? null : gtmContainerId
 
