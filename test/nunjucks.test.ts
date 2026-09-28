@@ -16,7 +16,7 @@ const env = new nunjucks.Environment(
   ])
 )
 
-const context = createConsentContext(resolveOptions({ gtmContainerId: 'GTM-ABC123' }), {
+const context = await createConsentContext(resolveOptions({ gtmContainerId: 'GTM-ABC123' }), {
   currentPath: '/start'
 })
 

@@ -60,6 +60,15 @@ describe('renderConsentBanner', () => {
     expect(banner({ serviceName: '<script>x</script>' })).not.toContain('<script>x')
   })
 
+  it('renders host-provided hidden fields with escaped names and values', () => {
+    const resolved = resolveOptions({ gtmContainerId: 'GTM-ABC123' })
+    const html = renderConsentBanner(
+      buildViewModel(resolved, { formFields: { 'csrf"field': '<token>&' } })
+    )
+
+    expect(html).toContain('name="csrf&quot;field" value="&lt;token&gt;&amp;"')
+  })
+
   it('hides the confirmation messages until a choice is made', () => {
     const html = banner()
 
@@ -184,6 +193,15 @@ describe('renderConsentCookiesPage', () => {
     const html = renderConsentCookiesPage(buildViewModel(resolved, { currentPath: '/cookies?returnUrl=/start' }))
 
     expect(html).toContain('value="/cookies?returnUrl=/start"')
+  })
+
+  it('renders host-provided hidden fields with escaped names and values', () => {
+    const resolved = resolveOptions({ gtmContainerId: 'GTM-ABC123' })
+    const withFields = renderConsentCookiesPage(
+      buildViewModel(resolved, { formFields: { 'csrf"field': '<token>&' } })
+    )
+
+    expect(withFields).toContain('name="csrf&quot;field" value="&lt;token&gt;&amp;"')
   })
 
   it('renders nothing when cookies have not just been saved', () => {

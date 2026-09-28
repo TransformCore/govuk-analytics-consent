@@ -93,6 +93,7 @@ function renderPrompt(
     '</div></div></div>',
     `<form class="govuk-button-group" method="post" action="${action}">`,
     `<input type="hidden" name="returnUrl" value="${returnUrl}">`,
+    ...renderHiddenFields(viewModel.formFields),
     `<button type="submit" name="preference" value="accept-all" class="govuk-button" data-module="govuk-button" data-consent-action="accept">${escapeHtml(viewModel.messages.acceptAll)}</button>`,
     `<button type="submit" name="preference" value="reject-all" class="govuk-button" data-module="govuk-button" data-consent-action="reject">${escapeHtml(viewModel.messages.rejectAll)}</button>`,
     renderCookiesPageLink(viewModel, viewModel.messages.viewCookies),
@@ -154,12 +155,20 @@ export function renderConsentCookiesPage(viewModel: ConsentViewModel): string {
     ...viewModel.categories.map((category) => renderCategorySection(category, viewModel)),
     `<form method="post" action="${action}">`,
     `<input type="hidden" name="returnUrl" value="${returnUrl}">`,
+    ...renderHiddenFields(viewModel.formFields),
     '<input type="hidden" name="preference" value="save">',
     renderChangeSettings(viewModel.categories, viewModel),
     '</form>',
     '</div>',
     '</div>'
   ].join('')
+}
+
+function renderHiddenFields(fields: Record<string, string>): string[] {
+  return Object.entries(fields).map(
+    ([name, value]) =>
+      `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`
+  )
 }
 
 /** Matches the markup a real `govukNotificationBanner({ type: "success" })` call would produce. */

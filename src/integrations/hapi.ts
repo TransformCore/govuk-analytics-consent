@@ -4,7 +4,8 @@ import {
   consentRoutePaths,
   createConsentContext,
   createConsentRequestState,
-  handleConsentPost
+  handleConsentPost,
+  verifyConsentSubmission
 } from './core.js'
 import { readQueryParam, safeInternalPath } from '../shared/url.js'
 import type { GovUkAnalyticsConsentOptions, ResolvedOptions } from '../consent/types.js'
@@ -70,7 +71,11 @@ export function registerHapi(
         auth: false,
         payload: { parse: true, allow: 'application/x-www-form-urlencoded', maxBytes: 4096 }
       },
-      handler: (request: any, h: any) => {
+      handler: async (request: any, h: any) => {
+        if (!(await verifyConsentSubmission(resolved, request, request.payload))) {
+          return h.response().code(403)
+        }
+
         const result = handleConsentPost(resolved, request.payload, {
           cookieHeader: request.headers.cookie,
           hostname: request.info?.hostname
@@ -97,7 +102,7 @@ export function registerHapi(
     return h.continue
   })
 
-  server.ext('onPreResponse', (request: any, h: any) => {
+  server.ext('onPreResponse', async (request: any, h: any) => {
     const response = request.response
     const expiryCookies: string[] = request.app.govukAnalyticsConsent?.expiryCookies ?? []
     const isConsentPost = request.method === 'post' && request.route?.path === paths.consent
@@ -112,7 +117,8 @@ export function registerHapi(
 
       response.source.context = {
         ...(response.source.context ?? {}),
-        govukAnalyticsConsent: createConsentContext(resolved, {
+        govukAnalyticsConsent: await createConsentContext(resolved, {
+          request,
           consent: request.app.govukAnalyticsConsent.state,
           currentPath,
           returnTo: returnUrl !== null ? safeInternalPath(returnUrl, currentPath) : undefined,

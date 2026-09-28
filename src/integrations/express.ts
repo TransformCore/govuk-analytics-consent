@@ -4,10 +4,10 @@ import {
   consentRoutePaths,
   createConsentContext,
   createConsentRequestState,
-  handleConsentPost
+  handleConsentPost,
+  verifyConsentSubmission
 } from './core.js'
 import { readQueryParam, safeInternalPath } from '../shared/url.js'
-import type { ConsentContext } from './core.js'
 import type { GovUkAnalyticsConsentOptions, ResolvedOptions } from '../consent/types.js'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -37,8 +37,7 @@ export function registerExpress(
   const resolved = resolveOptions(options)
   const paths = consentRoutePaths(resolved)
 
-  app.use((req: any, res: any, next: () => void) => {
-    let context: ConsentContext | null = null
+  app.use((req: any, res: any, next: (error?: unknown) => void) => {
     const requestConsent = createConsentRequestState(resolved, req.headers?.cookie, req.hostname)
 
     req.govukAnalyticsConsent = requestConsent
@@ -49,26 +48,20 @@ export function registerExpress(
       res.append('Set-Cookie', requestConsent.expiryCookies)
     }
 
-    Object.defineProperty(res.locals, 'govukAnalyticsConsent', {
-      configurable: true,
-      enumerable: true,
-      get: () => {
-        const currentPath: string = req.originalUrl ?? req.url ?? '/'
-        const returnUrl = readQueryParam(currentPath, 'returnUrl')
+    const currentPath: string = req.originalUrl ?? req.url ?? '/'
+    const returnUrl = readQueryParam(currentPath, 'returnUrl')
 
-        context ??= createConsentContext(resolved, {
-          consent: requestConsent.state,
-          currentPath,
-          returnTo: returnUrl !== null ? safeInternalPath(returnUrl, currentPath) : undefined,
-          cookiesSaved: readQueryParam(currentPath, 'cookies-updated') === 'true',
-          nonce: options.getNonce?.(req) ?? null
-        })
-
-        return context
-      }
-    })
-
-    next()
+    void createConsentContext(resolved, {
+      request: req,
+      consent: requestConsent.state,
+      currentPath,
+      returnTo: returnUrl !== null ? safeInternalPath(returnUrl, currentPath) : undefined,
+      cookiesSaved: readQueryParam(currentPath, 'cookies-updated') === 'true',
+      nonce: options.getNonce?.(req) ?? null
+    }).then((context) => {
+      res.locals.govukAnalyticsConsent = context
+      next()
+    }, next)
   })
 
   app.get(paths.script, (req: any, res: any) => {
@@ -86,8 +79,13 @@ export function registerExpress(
     res.send(asset.body)
   })
 
-  app.post(paths.consent, (req: any, res: any) => {
-    void withBody(req).then((body) => {
+  app.post(paths.consent, (req: any, res: any, next: (error?: unknown) => void) => {
+    void withBody(req).then(async (body) => {
+      if (!(await verifyConsentSubmission(resolved, req, body))) {
+        res.status(403).end()
+        return
+      }
+
       const result = handleConsentPost(resolved, body, {
         cookieHeader: req.headers?.cookie,
         hostname: req.hostname
@@ -107,7 +105,7 @@ export function registerExpress(
       })
 
       res.redirect(303, result.redirectTo)
-    })
+    }).catch(next)
   })
 
   return resolved

@@ -27,6 +27,7 @@ export interface ConsentContext extends ConsentViewModel {
 }
 
 export interface ContextInput {
+  request?: unknown
   cookieHeader?: string | null
   consent?: ConsentState
   currentPath?: string
@@ -35,17 +36,27 @@ export interface ContextInput {
   nonce?: string | null
 }
 
-export function createConsentContext(
+export async function createConsentContext(
   options: ResolvedOptions,
-  { cookieHeader, consent, currentPath = '/', returnTo, cookiesSaved = false, nonce = null }: ContextInput = {}
-): ConsentContext {
+  {
+    request,
+    cookieHeader,
+    consent,
+    currentPath = '/',
+    returnTo,
+    cookiesSaved = false,
+    nonce = null
+  }: ContextInput = {}
+): Promise<ConsentContext> {
   const resolvedConsent = consent ?? readConsentFromHeader(cookieHeader, options.cookieName, options.cookieVersion)
+  const formFields = await options.getCsrfFormFields?.(request) ?? {}
   const viewModel = buildViewModel(options, {
     consent: resolvedConsent,
     currentPath,
     returnTo,
     cookiesSaved,
-    nonce
+    nonce,
+    formFields
   })
 
   return {
@@ -140,6 +151,15 @@ export function handleConsentPost(
     redirectTo: isBannerChoice ? returnUrl : appendQueryParam(returnUrl, 'cookies-updated', 'true'),
     expiryCookies: buildRequestExpiryCookies(options, state, cookieHeader, hostname)
   }
+}
+
+export async function verifyConsentSubmission(
+  options: ResolvedOptions,
+  request: unknown,
+  body: Record<string, unknown>
+): Promise<boolean> {
+  return options.verifyCsrfFormSubmission === undefined ||
+    await options.verifyCsrfFormSubmission(request, body)
 }
 
 function readCategoryChoices(

@@ -1,3 +1,4 @@
+  getCsrfFormFields: async () => ({ csrfToken: 'hapi-token' })
 import Hapi from '@hapi/hapi'
 import Vision from '@hapi/vision'
 import nunjucks from 'nunjucks'
@@ -48,7 +49,8 @@ beforeEach(async () => {
     plugin: govukAnalyticsConsentPlugin,
     options: {
       gtmContainerId: 'GTM-ABC123',
-      cookies: [gaCookies('G-ABC123')]
+      cookies: [gaCookies('G-ABC123')],
+      getCsrfFormFields: async () => ({ csrfToken: 'hapi-token' })
     }
   })
 
@@ -170,6 +172,12 @@ describe('hapi integration', () => {
     expect(response.result).toContain('/govuk-analytics-consent/consent.js')
   })
 
+  it('renders async host-provided hidden fields in the banner form', async () => {
+    const response = await server.inject('/start')
+
+    expect(response.result).toContain('name="csrfToken" value="hapi-token"')
+  })
+
   it('uses a Blankie-generated script nonce by default', async () => {
     const response = await server.inject('/start')
 
@@ -225,5 +233,39 @@ describe('hapi integration', () => {
     expect(notFound.statusCode).toBe(404)
     expect(notFound.headers['set-cookie']).toHaveLength(3)
     expect(clean.headers['set-cookie']).toBeUndefined()
+  })
+
+  it('awaits submission verification and rejects before setting cookies or redirecting', async () => {
+    const guardedServer = Hapi.server()
+    await guardedServer.register({
+      plugin: govukAnalyticsConsentPlugin,
+      options: {
+        verifyCsrfFormSubmission: async (_request, body) => body.csrf === 'valid'
+      }
+    })
+    await guardedServer.initialize()
+
+    try {
+      const rejected = await guardedServer.inject({
+        method: 'POST',
+        url: '/govuk-analytics-consent/consent',
+        payload: 'csrf=invalid&preference=accept-all&returnUrl=%2Fstart',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' }
+      })
+      const accepted = await guardedServer.inject({
+        method: 'POST',
+        url: '/govuk-analytics-consent/consent',
+        payload: 'csrf=valid&preference=accept-all&returnUrl=%2Fstart',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' }
+      })
+
+      expect(rejected.statusCode).toBe(403)
+      expect(rejected.headers['set-cookie']).toBeUndefined()
+      expect(rejected.headers.location).toBeUndefined()
+      expect(accepted.statusCode).toBe(303)
+      expect(accepted.headers['set-cookie']).toBeDefined()
+    } finally {
+      await guardedServer.stop()
+    }
   })
 })

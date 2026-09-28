@@ -1,3 +1,4 @@
+  getCsrfFormFields: async () => ({ csrf: '<token>&' })
 import express from 'express'
 import nunjucks from 'nunjucks'
 import request from 'supertest'
@@ -217,6 +218,43 @@ describe('express integration', () => {
       .send({ preference: 'accept-all', returnUrl: '/start' })
 
     expect(response.headers['set-cookie']).toHaveLength(1)
+  })
+
+  it('awaits async form fields and escapes them in rendered consent forms', async () => {
+    const fieldsApp = express()
+    registerGovUkAnalyticsConsent(fieldsApp, {
+      getCsrfFormFields: async () => ({ csrf: '<token>&' })
+    })
+    fieldsApp.get('/fields', (_req, res) => {
+      const context = res.locals.govukAnalyticsConsent
+      res.send(context.banner + context.cookiesPage)
+    })
+
+    const response = await request(fieldsApp).get('/fields')
+
+    expect(response.text.match(/name="csrf" value="&lt;token&gt;&amp;"/g)).toHaveLength(2)
+  })
+
+  it('rejects invalid submissions before setting cookies or redirecting', async () => {
+    const guardedApp = express()
+    registerGovUkAnalyticsConsent(guardedApp, {
+      verifyCsrfFormSubmission: async (_req, body) => body.csrf === 'valid'
+    })
+
+    const rejected = await request(guardedApp)
+      .post('/govuk-analytics-consent/consent')
+      .type('form')
+      .send({ csrf: 'invalid', preference: 'accept-all', returnUrl: '/start' })
+    const accepted = await request(guardedApp)
+      .post('/govuk-analytics-consent/consent')
+      .type('form')
+      .send({ csrf: 'valid', preference: 'accept-all', returnUrl: '/start' })
+
+    expect(rejected.status).toBe(403)
+    expect(rejected.headers['set-cookie']).toBeUndefined()
+    expect(rejected.headers.location).toBeUndefined()
+    expect(accepted.status).toBe(303)
+    expect(accepted.headers['set-cookie']).toBeDefined()
   })
 })
 

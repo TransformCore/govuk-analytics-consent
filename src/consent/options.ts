@@ -68,6 +68,8 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
     cookies,
     serviceName: options.serviceName ?? defaults.serviceName,
     messages,
+    getCsrfFormFields: options.getCsrfFormFields,
+    verifyCsrfFormSubmission: options.verifyCsrfFormSubmission,
     cookie: {
       path: '/',
       sameSite: 'Lax',

@@ -109,6 +109,15 @@ export interface GovUkAnalyticsConsentOptions {
   cookieMaxAge?: number
   /** Return a CSP nonce for the current request; applied to every injected <script>. */
   getNonce?: (request: unknown) => string | null | undefined
+  /** Return CSRF hidden fields for the current request. Names and values are HTML-escaped. */
+  getCsrfFormFields?: (
+    request: unknown
+  ) => Record<string, string> | Promise<Record<string, string>>
+  /** Verify a submitted CSRF-protected consent form when middleware does not protect the route. */
+  verifyCsrfFormSubmission?: (
+    request: unknown,
+    body: Record<string, unknown>
+  ) => boolean | Promise<boolean>
 }
 
 export interface ResolvedCookieOptions {
@@ -131,4 +140,6 @@ export interface ResolvedOptions {
   serviceName: string
   messages: ConsentMessages
   cookie: ResolvedCookieOptions
+  getCsrfFormFields?: GovUkAnalyticsConsentOptions['getCsrfFormFields']
+  verifyCsrfFormSubmission?: GovUkAnalyticsConsentOptions['verifyCsrfFormSubmission']
 }

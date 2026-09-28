@@ -19,6 +19,7 @@ export interface ConsentViewModel {
   /** Whether the current request just redirected here after saving cookie preferences. */
   cookiesSaved: boolean
   nonce: string | null
+  formFields: Record<string, string>
 }
 
 export interface ViewModelInput {
@@ -27,11 +28,19 @@ export interface ViewModelInput {
   returnTo?: string
   cookiesSaved?: boolean
   nonce?: string | null
+  formFields?: Record<string, string>
 }
 
 export function buildViewModel(
   options: ResolvedOptions,
-  { consent, currentPath = '/', returnTo, cookiesSaved = false, nonce = null }: ViewModelInput = {}
+  {
+    consent,
+    currentPath = '/',
+    returnTo,
+    cookiesSaved = false,
+    nonce = null,
+    formFields = {}
+  }: ViewModelInput = {}
 ): ConsentViewModel {
   return {
     gtmContainerId: options.gtmContainerId,
@@ -48,6 +57,7 @@ export function buildViewModel(
     currentPath,
     returnTo: returnTo ?? currentPath,
     cookiesSaved,
-    nonce
+    nonce,
+    formFields
   }
 }

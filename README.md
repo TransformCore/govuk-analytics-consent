@@ -249,6 +249,100 @@ All optional.
 | `secureCookie` | `NODE_ENV === 'production'` | |
 | `cookieMaxAge` | 1 year (seconds) | |
 | `getNonce` | Blankie's script nonce in Hapi; otherwise none | `(request) => string` — applied to every injected `<script>` for CSP; an explicit callback overrides automatic Blankie detection |
+| `getCsrfFormFields` | none | `(request) => fields` — sync or async map of CSRF hidden field names to string values; rendered, HTML-escaped, in both consent forms |
+| `verifyCsrfFormSubmission` | none | `(request, body) => boolean` — sync or async callback for validating a parsed consent POST; returning `false` responds with `403` |
+
+## CSRF protection
+
+The consent POST route is not protected automatically. Use your framework's CSRF middleware to
+validate the route, or provide `verifyCsrfFormSubmission`; returning `false` responds with `403`.
+When middleware handles validation, omit the verifier callback. `getCsrfFormFields` supplies
+request-specific hidden fields; names and values are HTML-escaped. Both callbacks may be sync or
+async.
+
+Register the CSRF middleware before `registerGovUkAnalyticsConsent` (or before registering the
+Hapi plugin), and make sure it protects `POST {routePrefix}/consent`. Do not shared-cache HTML
+containing request-specific tokens.
+
+### Hapi with Crumb
+
+[`@hapi/crumb`](https://github.com/hapijs/crumb) generates a crumb for each request, exposes it as
+`request.plugins.crumb`, and validates the `crumb` payload field on protected POST routes. Register
+Crumb first, then provide that value to the generated forms:
+
+```js
+import Crumb from '@hapi/crumb'
+import consentPlugin from '@transform-uk/govuk-analytics-consent/hapi'
+
+await server.register(Crumb)
+await server.register({
+  plugin: consentPlugin,
+  options: {
+    getCsrfFormFields: (request) => ({ crumb: request.plugins.crumb })
+  }
+})
+```
+
+Crumb validates the consent POST before the package handler runs, so `verifyCsrfFormSubmission` is
+not needed. Keep Crumb enabled for the consent route, and set Crumb's cookie `secure` option to
+`true` in production. If you customize Crumb's key, use that key for the generated hidden field.
+
+### Express with csrf-sync
+
+[`csrf-sync`](https://github.com/Psifi-Solutions/csrf-sync) uses a session-backed synchronizer
+token. Install session middleware and URL-encoded body parsing before its protection middleware;
+configure it to read the same field the package renders:
+
+```js
+import express from 'express'
+import { csrfSync } from 'csrf-sync'
+import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+
+const { generateToken, csrfSynchronisedProtection } = csrfSync({
+  getTokenFromRequest: (req) => req.body?._csrf
+})
+
+app.use(sessionMiddleware)
+app.use(express.urlencoded({ extended: false }))
+app.use(csrfSynchronisedProtection)
+registerGovUkAnalyticsConsent(app, {
+  getCsrfFormFields: (request) => ({ _csrf: generateToken(request) })
+})
+```
+
+### Express with csrf-csrf
+
+[`csrf-csrf`](https://github.com/Psifi-Solutions/csrf-csrf) uses a signed double-submit cookie.
+Configure a strong secret and a stable session identifier, parse form bodies before protection,
+and render the token exposed by its middleware:
+
+```js
+import express from 'express'
+import cookieParser from 'cookie-parser'
+import { doubleCsrf } from 'csrf-csrf'
+import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+
+const { doubleCsrfProtection } = doubleCsrf({
+  getSecret: () => config.csrfSecret,
+  getSessionIdentifier: (req) => req.session.id,
+  getCsrfTokenFromRequest: (req) => req.body?._csrf
+})
+
+app.use(sessionMiddleware)
+app.use(cookieParser())
+app.use(express.urlencoded({ extended: false }))
+app.use(doubleCsrfProtection)
+registerGovUkAnalyticsConsent(app, {
+  getCsrfFormFields: (request) => ({ _csrf: request.csrfToken() })
+})
+```
+
+Use either Express middleware recipe, not both. In both cases the middleware validates the
+consent route, so the package verifier callback is unnecessary. The browser-enhanced banner
+currently records its choice client-side; these recipes protect the cookies-page POST and the
+banner's native no-JavaScript form submission. The examples assume `sessionMiddleware` is already
+configured; with `csrf-csrf`, register `cookie-parser` after `express-session` when both are used.
+Keep the `csrf-csrf` secret in secure runtime configuration, not source control.
 
 ## Google Analytics integration
 
