@@ -1,12 +1,12 @@
 import { defaultMessages } from './messages.js'
 import type { ConsentMessages, CookieCategory, CookieCategoryPreset } from './types.js'
 
-export function buildDefaultCategories(messages: ConsentMessages = defaultMessages): CookieCategory[] {
+export function buildDefaultCategories(messages: ConsentMessages = defaultMessages.en): CookieCategory[] {
   return [buildEssentialCategory(messages), buildAnalyticsCategory(messages)]
 }
 
 export function buildAdditionalConsentModeCategories(
-  messages: ConsentMessages = defaultMessages
+  messages: ConsentMessages = defaultMessages.en
 ): CookieCategory[] {
   return [
     buildAdvertisingCategory(messages),
@@ -87,9 +87,9 @@ export function buildPersonalizationCategory(messages: ConsentMessages): CookieC
   }
 }
 
-export const analyticsCategory: CookieCategory = buildAnalyticsCategory(defaultMessages)
-export const essentialCategory: CookieCategory = buildEssentialCategory(defaultMessages)
-export const advertisingCategory: CookieCategory = buildAdvertisingCategory(defaultMessages)
-export const functionalityCategory: CookieCategory = buildFunctionalityCategory(defaultMessages)
-export const personalizationCategory: CookieCategory = buildPersonalizationCategory(defaultMessages)
+export const analyticsCategory: CookieCategory = buildAnalyticsCategory(defaultMessages.en)
+export const essentialCategory: CookieCategory = buildEssentialCategory(defaultMessages.en)
+export const advertisingCategory: CookieCategory = buildAdvertisingCategory(defaultMessages.en)
+export const functionalityCategory: CookieCategory = buildFunctionalityCategory(defaultMessages.en)
+export const personalizationCategory: CookieCategory = buildPersonalizationCategory(defaultMessages.en)
 export const defaultCategories: CookieCategory[] = [essentialCategory, analyticsCategory]

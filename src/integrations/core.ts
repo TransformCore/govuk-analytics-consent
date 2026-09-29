@@ -1,4 +1,5 @@
 import { parseCookieHeader, readConsentFromHeader, serialiseConsent } from '../consent/cookie.js'
+import { negotiateLanguage, selectLanguage } from '../consent/messages.js'
 import { buildExpiryCookies, buildRemovalCategories, findCookiesToRemove } from '../consent/removal.js'
 import {
   buildCategoryChoices,
@@ -50,7 +51,12 @@ export async function createConsentContext(
 ): Promise<ConsentContext> {
   const resolvedConsent = consent ?? readConsentFromHeader(cookieHeader, options.cookieName, options.cookieVersion)
   const formFields = await options.getCsrfFormFields?.(request) ?? {}
-  const viewModel = buildViewModel(options, {
+  const requestedLanguage = await options.getLanguage?.(request)
+  const header = (request as { headers?: Record<string, unknown> } | undefined)?.headers?.['accept-language']
+  const language = requestedLanguage === undefined
+    ? negotiateLanguage(typeof header === 'string' ? header : undefined)
+    : selectLanguage(requestedLanguage)
+  const viewModel = buildViewModel({ ...options, ...options.localize(language) }, {
     consent: resolvedConsent,
     currentPath,
     returnTo,

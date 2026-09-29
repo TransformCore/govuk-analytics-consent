@@ -10,6 +10,7 @@ import {
   test
 } from './fixtures.js'
 import type { BrowserContext } from '@playwright/test'
+import { getDefaultMessages } from '../src/consent/messages.js'
 
 async function seedCookies(context: BrowserContext, baseURL: string | undefined, names: string[]): Promise<void> {
   await context.addCookies(
@@ -18,6 +19,27 @@ async function seedCookies(context: BrowserContext, baseURL: string | undefined,
 }
 
 test.describe('first visit', () => {
+  test('selects banner and cookies-page copy from each request language', async ({ browser, page, baseURL, scenario }) => {
+    test.skip(scenario.language !== 'en')
+
+    const welsh = getDefaultMessages('cy')
+    const english = getDefaultMessages('en')
+
+    const welshContext = await browser.newContext({ locale: 'cy-GB', baseURL })
+    const welshPage = await welshContext.newPage()
+    await welshPage.goto('/')
+    await expect(welshPage.getByRole('button', { name: welsh.acceptAll })).toBeVisible()
+    await welshPage.goto('/cookies')
+    await expect(welshPage.getByRole('heading', { level: 1, name: welsh.cookiesPageTitle })).toBeVisible()
+    await expect(welshPage.getByText(welsh.analyticsCategoryTitle)).toBeVisible()
+    await welshContext.close()
+
+    await page.goto('/')
+    await expect(page.getByRole('button', { name: english.acceptAll })).toBeVisible()
+    await page.goto('/cookies')
+    await expect(page.getByRole('heading', { level: 1, name: english.cookiesPageTitle })).toBeVisible()
+  })
+
   test('shows the banner and denies optional consent by default', async ({ page, context, bannerTitle, messages, optionalCategories, serverMessage }) => {
     await page.goto('/')
 

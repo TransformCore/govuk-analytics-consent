@@ -5,11 +5,11 @@ import nunjucks from 'nunjucks'
 import {
   gaCookies,
   govukAnalyticsConsentPlugin,
-  govukAnalyticsConsentTemplatePath,
-  welshMessages
+  govukAnalyticsConsentTemplatePath
 } from '../../dist/index.js'
+import { exampleLanguage, languageCookieName, languageReturnUrl, languageView } from '../language.js'
 
-const server = Hapi.server({ port: 3000, host: 'localhost' })
+const server = Hapi.server({ port: Number(process.env.PORT ?? 3000), host: 'localhost' })
 
 await server.register([Inert, Vision])
 
@@ -45,6 +45,7 @@ await server.register({
     cookies: [
       gaCookies(),
       { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
+      { name: languageCookieName, categoryId: 'essential', purpose: 'Remembers your language choice', expiry: '1 year' },
       {
         name: 'example_preferences',
         categoryId: 'personalization',
@@ -52,7 +53,27 @@ await server.register({
         expiry: '1 year'
       }
     ],
-    messages: welshMessages
+    getLanguage: (request) => exampleLanguage(request.headers.cookie)
+  }
+})
+
+server.route({
+  method: 'GET',
+  path: '/language/{language}',
+  handler: (request, h) => {
+    const language = request.params.language
+
+    if (language !== 'en' && language !== 'cy') {
+      return h.response().code(404)
+    }
+
+    return h.redirect(languageReturnUrl(request.query.returnUrl)).code(303).state(languageCookieName, language, {
+      path: '/',
+      isHttpOnly: true,
+      isSameSite: 'Lax',
+      isSecure: request.server.info.protocol === 'https',
+      ttl: 365 * 24 * 60 * 60 * 1000
+    })
   }
 })
 
@@ -79,14 +100,18 @@ server.route({
         ? 'Personalisation cookies are disabled. This page is using the default display settings.'
         : 'You have not chosen your cookie preferences yet. This page is using the default display settings.'
 
-    return h.view('index.njk', { personalizationMessage })
+    return h.view('index.njk', {
+      personalizationMessage,
+      ...languageView(request.headers.cookie, `${request.url.pathname}${request.url.search}`)
+    })
   }
 })
 
 server.route({
   method: 'GET',
   path: '/cookies',
-  handler: (_request, h) => h.view('cookies.njk')
+  handler: (request, h) => h.view('cookies.njk',
+    languageView(request.headers.cookie, `${request.url.pathname}${request.url.search}`))
 })
 
 await server.start()

@@ -1,14 +1,14 @@
 import express from 'express'
 import nunjucks from 'nunjucks'
 import {
-  defaultCategories,
   gaCookies,
-  personalizationCategory,
   registerGovUkAnalyticsConsent,
   govukAnalyticsConsentTemplatePath
 } from '../../dist/index.js'
+import { exampleLanguage, languageCookieName, languageReturnUrl, languageView } from '../language.js'
 
 const app = express()
+const port = Number(process.env.PORT ?? 3000)
 
 nunjucks.configure(
   [govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-frontend/dist', 'examples/express/views'],
@@ -20,20 +20,45 @@ nunjucks.configure(
 registerGovUkAnalyticsConsent(app, {
   serviceName: 'Example service',
   cookiesPageUrl: '/cookies',
-  categories: [...defaultCategories, personalizationCategory],
+  categories: ['default', 'personalization'],
   cookies: [
     gaCookies(),
     { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
+    { name: languageCookieName, categoryId: 'essential', purpose: 'Remembers your language choice', expiry: '1 year' },
     {
       name: 'example_preferences',
       categoryId: 'personalization',
       purpose: 'Remembers your display preferences',
       expiry: '1 year'
     }
-  ]
+  ],
+  getLanguage: (request) => exampleLanguage(request.headers.cookie)
+})
+
+app.use((req, res, next) => {
+  Object.assign(res.locals, languageView(req.headers.cookie, req.originalUrl))
+  next()
 })
 
 app.use('/govuk-frontend', express.static('node_modules/govuk-frontend/dist/govuk'))
+
+app.get('/language/:language', (req, res) => {
+  const language = req.params.language
+
+  if (language !== 'en' && language !== 'cy') {
+    res.sendStatus(404)
+    return
+  }
+
+  res.cookie(languageCookieName, language, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: req.secure,
+    maxAge: 365 * 24 * 60 * 60 * 1000
+  })
+  res.redirect(303, languageReturnUrl(req.query.returnUrl))
+})
 
 app.get('/', (req, res) => {
   const consent = req.govukAnalyticsConsent
@@ -47,4 +72,4 @@ app.get('/', (req, res) => {
 })
 app.get('/cookies', (_req, res) => res.render('cookies.njk'))
 
-app.listen(3000, () => console.log('Listening on http://localhost:3000'))
+app.listen(port, () => console.log(`Listening on http://localhost:${port}`))

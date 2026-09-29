@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { resolveOptions } from '../src/consent/options.js'
 import { gaCookies } from '../src/consent/default-cookies.js'
-import { welshMessages } from '../src/consent/messages.js'
+import { defaultMessages, getDefaultMessages, negotiateLanguage, resolveMessages, selectLanguage } from '../src/consent/messages.js'
+import { createConsentContext } from '../src/integrations/core.js'
 import { safeInternalPath, normaliseRoutePrefix } from '../src/shared/url.js'
 
 const originalContainerId = process.env.GTM_CONTAINER_ID
@@ -28,16 +29,88 @@ afterEach(() => {
 })
 
 describe('resolveOptions', () => {
+  it('localizes categories and built-in cookie descriptions per request', async () => {
+    const options = resolveOptions({
+      cookies: [gaCookies('G-ABC123')],
+      messages: { cy: { analyticsCategoryTitle: 'Dadansoddi', gaCookiePurpose: 'Cyfrif ymweliadau' } }
+    })
+    const english = await createConsentContext(options, { request: { headers: { 'accept-language': 'en' } } })
+    const welsh = await createConsentContext(options, { request: { headers: { 'accept-language': 'cy' } } })
+
+    expect(english.categories.find((category) => category.id === 'analytics')?.title).toBe(defaultMessages.en.analyticsCategoryTitle)
+    expect(welsh.categories.find((category) => category.id === 'analytics')?.title).toBe('Dadansoddi')
+    expect(english.cookies.find((cookie) => cookie.name === '_ga')?.purpose).toBe(defaultMessages.en.gaCookiePurpose)
+    expect(welsh.cookies.find((cookie) => cookie.name === '_ga')?.purpose).toBe('Cyfrif ymweliadau')
+    expect(welsh.cookies.find((cookie) => cookie.name === options.cookieName)?.purpose).toBe(defaultMessages.cy.defaultCookiePurpose)
+    expect(welsh.categories.map((category) => category.id)).toEqual(english.categories.map((category) => category.id))
+    expect(welsh.cookies.map((cookie) => cookie.name)).toEqual(english.cookies.map((cookie) => cookie.name))
+  })
+
+  it('keeps consent and removal identifiers stable when a factory changes them by language', async () => {
+    const options = resolveOptions({
+      cookies: [(messages) => [{
+        name: messages.acceptAll === defaultMessages.cy.acceptAll ? 'other_id' : 'tracking_id',
+        categoryId: 'analytics',
+        purpose: messages.acceptAll,
+        expiry: '1 year'
+      }]]
+    })
+    const welsh = await createConsentContext(options, { request: { headers: { 'accept-language': 'cy' } } })
+
+    expect(welsh.cookies.find((cookie) => cookie.name === 'tracking_id')).toEqual(
+      expect.objectContaining({ name: 'tracking_id', categoryId: 'analytics' })
+    )
+    expect(welsh.cookies.some((cookie) => cookie.name === 'other_id')).toBe(false)
+  })
+
+  it('uses an async service language callback before browser preferences', async () => {
+    const options = resolveOptions({ getLanguage: async () => 'cy-GB' })
+    const context = await createConsentContext(options, { request: { headers: { 'accept-language': 'en' } } })
+
+    expect(context.messages.acceptAll).toBe(defaultMessages.cy.acceptAll)
+    const browserOptions = resolveOptions({ getLanguage: () => undefined })
+    const browser = await createConsentContext(browserOptions, { request: { headers: { 'accept-language': 'cy' } } })
+    expect(browser.messages.acceptAll).toBe(defaultMessages.cy.acceptAll)
+  })
+
+  it('negotiates a supported browser language, including regional preferences and quality', () => {
+    expect(negotiateLanguage('en-GB,en;q=0.9,cy-GB;q=0.8')).toBe('en')
+    expect(negotiateLanguage('en;q=0.2,cy-GB;q=0.9')).toBe('cy')
+    expect(negotiateLanguage('fr,cy;q=0.8,en;q=0.7')).toBe('cy')
+    expect(negotiateLanguage('cy;q=0,en;q=0.5')).toBe('en')
+    expect(negotiateLanguage('fr,es')).toBe('en')
+    expect(negotiateLanguage('cy;q=invalid')).toBe('en')
+    expect(negotiateLanguage()).toBe('en')
+    expect(selectLanguage('CY-gb')).toBe('cy')
+    expect(selectLanguage('fr')).toBe('en')
+  })
+
+  it('applies only the selected language overrides and falls back to overridden English', () => {
+    const messages = { en: { acceptAll: 'Accept' }, cy: { acceptAll: 'Derbyn' } }
+
+    expect(resolveMessages('cy', messages).acceptAll).toBe('Derbyn')
+    expect(resolveMessages('cy', messages).rejectAll).toBe(defaultMessages.cy.rejectAll)
+    expect(resolveMessages('cy', { en: messages.en }).acceptAll).toBe(defaultMessages.cy.acceptAll)
+    expect(resolveMessages('en', messages).acceptAll).toBe('Accept')
+    expect(resolveMessages('fr', messages).acceptAll).toBe('Accept')
+  })
+
+  it('falls back to English when a language has no built-in messages', () => {
+    expect(getDefaultMessages('cy')).toBe(defaultMessages.cy)
+    expect(getDefaultMessages('fr')).toBe(defaultMessages.en)
+    expect(getDefaultMessages('toString')).toBe(defaultMessages.en)
+    expect(resolveOptions().localize('en').messages.acceptAll).toBe('Accept all cookies')
+  })
+
   it('builds category presets with the resolved localized messages', () => {
     const resolved = resolveOptions({
-      messages: welshMessages,
       categories: ['default', 'personalization']
     })
 
-    expect(resolved.categories.map(({ title, description }) => [title, description])).toEqual([
-      [welshMessages.essentialCategoryTitle, welshMessages.essentialCategoryDescription],
-      [welshMessages.analyticsCategoryTitle, welshMessages.analyticsCategoryDescription],
-      [welshMessages.personalizationCategoryTitle, welshMessages.personalizationCategoryDescription]
+    expect(resolved.localize('cy').categories.map(({ title, description }) => [title, description])).toEqual([
+      [defaultMessages['cy'].essentialCategoryTitle, defaultMessages['cy'].essentialCategoryDescription],
+      [defaultMessages['cy'].analyticsCategoryTitle, defaultMessages['cy'].analyticsCategoryDescription],
+      [defaultMessages['cy'].personalizationCategoryTitle, defaultMessages['cy'].personalizationCategoryDescription]
     ])
   })
 
@@ -76,9 +149,11 @@ describe('resolveOptions', () => {
   it('merges custom text over the default English copy', () => {
     const resolved = resolveOptions({
       messages: {
-        acceptAll: 'Accept all',
-        rejectAll: 'Reject all',
-        changeSettings: 'Manage cookies'
+        en: {
+          acceptAll: 'Accept all',
+          rejectAll: 'Reject all',
+          changeSettings: 'Manage cookies'
+        }
       }
     })
 
@@ -148,10 +223,12 @@ describe('cookies table defaults', () => {
     const resolved = resolveOptions({
       cookies: [gaCookies('G-ABC123')],
       messages: {
-        gaCookiePurpose: 'Custom analytics purpose',
-        gaSessionCookiePurpose: 'Custom session purpose',
-        gaCookieProvider: 'Custom provider',
-        gaCookieExpiry: 'Custom duration'
+        en: {
+          gaCookiePurpose: 'Custom analytics purpose',
+          gaSessionCookiePurpose: 'Custom session purpose',
+          gaCookieProvider: 'Custom provider',
+          gaCookieExpiry: 'Custom duration'
+        }
       }
     })
 

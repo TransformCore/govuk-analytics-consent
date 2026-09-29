@@ -2,7 +2,7 @@ import { buildCategoryPreset, buildDefaultCategories } from './categories.js'
 import { defaultCookieDefinitions } from './default-cookies.js'
 import { globToPattern } from './removal.js'
 import { normaliseRoutePrefix, safeInternalPath } from '../shared/url.js'
-import { resolveMessages } from './messages.js'
+import { resolveMessages, type LanguageCode } from './messages.js'
 import type {
   CookieDefinition,
   CookieRemoval,
@@ -46,20 +46,48 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
     throw new Error(`Invalid cookieName: "${cookieName}"`)
   }
 
-  const messages = resolveMessages(options.messages)
-  const categories = options.categories === undefined
-    ? buildDefaultCategories(messages)
-    : options.categories.flatMap((category) =>
-        typeof category === 'string' ? buildCategoryPreset(category, messages) : [category]
-      )
   const cookieMaxAge = options.cookieMaxAge ?? ONE_YEAR_SECONDS
   const resolvedGtmContainerId = gtmContainerId === '' ? null : gtmContainerId
 
-  const cookies = resolveCookieDefinitions(options, categories, {
-    cookieName,
-    cookieMaxAge,
-    messages
-  })
+  const localize = (language: LanguageCode) => {
+    const messages = resolveMessages(language, options.messages)
+    const categories = options.categories === undefined
+      ? buildDefaultCategories(messages)
+      : options.categories.flatMap((category) =>
+          typeof category === 'string' ? buildCategoryPreset(category, messages) : [category]
+        )
+    const cookies = resolveCookieDefinitions(options, categories, { cookieName, cookieMaxAge, messages })
+
+    return { messages, categories, cookies }
+  }
+  const { messages, categories, cookies } = localize('en')
+  const localizedDisplay = (language: LanguageCode) => {
+    const localized = localize(language)
+    const categoriesById = new Map(localized.categories.map((category) => [category.id, category]))
+    const cookiesByName = new Map(localized.cookies.map((cookie) => [cookie.name, cookie]))
+
+    return {
+      messages: localized.messages,
+      categories: categories.map((category) => {
+        const translation = categoriesById.get(category.id)
+        return translation === undefined ? category : {
+          ...category,
+          title: translation.title,
+          description: translation.description,
+          shortName: translation.shortName
+        }
+      }),
+      cookies: cookies.map((cookie) => {
+        const translation = cookiesByName.get(cookie.name)
+        return translation === undefined ? cookie : {
+          ...cookie,
+          purpose: translation.purpose,
+          expiry: translation.expiry,
+          provider: translation.provider
+        }
+      })
+    }
+  }
 
   return {
     gtmContainerId: resolvedGtmContainerId,
@@ -72,6 +100,8 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
     cookies,
     serviceName: options.serviceName ?? defaults.serviceName,
     messages,
+    getLanguage: options.getLanguage,
+    localize: localizedDisplay,
     getCsrfFormFields: options.getCsrfFormFields,
     verifyCsrfFormSubmission: options.verifyCsrfFormSubmission,
     cookie: {

@@ -54,7 +54,7 @@ export {
   personalizationCategory,
   defaultCategories
 } from './consent/categories.js'
-export { defaultMessages, resolveMessages, welshMessages } from './consent/messages.js'
+export { defaultMessages, getDefaultMessages, resolveMessages } from './consent/messages.js'
 export type { ConsentMessages } from './consent/types.js'
 export { defaultCookieDefinitions, gaCookies } from './consent/default-cookies.js'
 export {

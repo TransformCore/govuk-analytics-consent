@@ -2,7 +2,7 @@ import Hapi from '@hapi/hapi'
 import Inert from '@hapi/inert'
 import Vision from '@hapi/vision'
 import nunjucks from 'nunjucks'
-import { gaCookies, govukAnalyticsConsentPlugin, govukAnalyticsConsentTemplatePath, welshMessages } from '../../dist/index.js'
+import { gaCookies, govukAnalyticsConsentPlugin, govukAnalyticsConsentTemplatePath } from '../../dist/index.js'
 
 const port = Number(process.env.PORT ?? 3000)
 const extraCategories = (process.env.EXTRA_COOKIE_CATEGORIES ?? '').split(',').map((id) => id.trim()).filter(Boolean)
@@ -38,7 +38,7 @@ await server.register({
       ...(extraCategories.includes('advertising') ? [{ name: 'example_advertising', categoryId: 'advertising', purpose: 'Tests advertising cookie removal', expiry: '1 year' }] : []),
       ...(extraCategories.includes('functionality') ? [{ name: 'example_functionality', categoryId: 'functionality', purpose: 'Tests functionality cookie removal', expiry: '1 year' }] : [])
     ],
-    messages: welshMessages
+    getLanguage: () => 'cy'
   }
 })
 server.route({ method: 'GET', path: '/govuk-frontend/{param*}', options: { auth: false }, handler: { directory: { path: 'node_modules/govuk-frontend/dist/govuk', index: false } } })

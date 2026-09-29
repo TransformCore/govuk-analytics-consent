@@ -19,7 +19,11 @@ beforeEach(() => {
 
   registerGovUkAnalyticsConsent(app, {
     gtmContainerId: 'GTM-ABC123',
-    cookies: [gaCookies('G-ABC123')]
+    cookies: [gaCookies('G-ABC123')],
+    messages: {
+      en: { acceptAll: 'Accept everything' },
+      cy: { acceptAll: 'Derbyn popeth' }
+    }
   })
 
   app.get('/start', (_req, res) => res.render('page.njk'))
@@ -36,6 +40,20 @@ beforeEach(() => {
 })
 
 describe('express integration', () => {
+  it('renders each request in its preferred language with its own overrides', async () => {
+    const english = await request(app).get('/start').set('accept-language', 'en-GB')
+    const welsh = await request(app).get('/start').set('accept-language', 'cy-GB, en;q=0.5')
+    const fallback = await request(app).get('/start').set('accept-language', 'fr')
+
+    expect(english.text).toContain('Accept everything')
+    expect(english.text).toContain('Reject additional cookies')
+    expect(english.text).not.toContain('Derbyn popeth')
+    expect(welsh.text).toContain('Derbyn popeth')
+    expect(welsh.text).toContain('Gwrthod cwcis ychwanegol')
+    expect(welsh.text).not.toContain('Accept everything')
+    expect(fallback.text).toContain('Accept everything')
+  })
+
   it('exposes consent state to downstream request handlers', async () => {
     const withoutChoice = await request(app).get('/request-consent/analytics')
     const essential = await request(app).get('/request-consent/essential')
