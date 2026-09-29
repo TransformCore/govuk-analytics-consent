@@ -54,7 +54,8 @@
     "typecheck": "tsc --noEmit",
     "pretest": "npm run build:client",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "npm run build && playwright test"
   },
   "peerDependencies": {
     "govuk-frontend": ">=4.0.0"
@@ -68,6 +69,7 @@
     "@hapi/hapi": "^21.3.12",
     "@hapi/inert": "^7.1.0",
     "@hapi/vision": "^7.0.3",
+    "@playwright/test": "^1.63.0",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.0",
     "@types/nunjucks": "^3.2.6",
