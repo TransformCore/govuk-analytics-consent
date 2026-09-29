@@ -5,7 +5,8 @@ import nunjucks from 'nunjucks'
 import {
   gaCookies,
   govukAnalyticsConsentPlugin,
-  govukAnalyticsConsentTemplatePath
+  govukAnalyticsConsentTemplatePath,
+  welshMessages
 } from '../../dist/index.js'
 
 const server = Hapi.server({ port: 3000, host: 'localhost' })
@@ -50,7 +51,8 @@ await server.register({
         purpose: 'Remembers your display preferences',
         expiry: '1 year'
       }
-    ]
+    ],
+    messages: welshMessages
   }
 })
 
