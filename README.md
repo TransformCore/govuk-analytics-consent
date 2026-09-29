@@ -1,8 +1,8 @@
 # @transform-uk/govuk-analytics-consent
 
 Near zero-configuration GOV.UK cookie consent banner, including Google Tag Manager loading and Google
-Consent Mode integration for Node.js services. Built for Defra Hapi services, but
-framework-agnostic with a first-class Express adapter.
+Consent Mode integration for Node.js services. Built for Defra Hapi services, with first-class
+Hapi, Express and Fastify integrations.
 
 Source: https://github.com/TransformCore/govuk-analytics-consent
 
@@ -64,9 +64,34 @@ registerGovUkAnalyticsConsent(app, {
 })
 ```
 
+### Fastify
+
+```js
+import Fastify from 'fastify'
+import govukAnalyticsConsent from '@transform-uk/govuk-analytics-consent/fastify'
+import { gaCookies } from '@transform-uk/govuk-analytics-consent'
+
+const app = Fastify()
+
+await app.register(govukAnalyticsConsent, {
+  serviceName: 'Apply for a licence',
+  cookies: [gaCookies()]
+})
+
+app.get('/', (request, reply) => reply.view('index.njk', {
+  govukAnalyticsConsent: request.govukAnalyticsConsentContext
+}))
+```
+
+Fastify's view plugins do not provide a universal locals object, so pass
+`request.govukAnalyticsConsentContext` to each rendered view. The request also exposes
+`request.govukAnalyticsConsent` for server-side category checks. The plugin registers the consent
+routes and parses URL-encoded consent forms; if a form parser is already registered, it reuses it.
+
 Hapi has a native plugin contract, so its adapter can be passed directly to `server.register()`.
 Express has no equivalent plugin contract; `registerGovUkAnalyticsConsent(app, options)` is the
 equivalent one-call integration and installs its middleware and routes on the application.
+Fastify has a native plugin contract and can be registered with `app.register()`.
 
 ### Content Security Policy
 
@@ -100,8 +125,39 @@ await server.register({ plugin: consentPlugin })
 The Hapi plugin automatically uses `request.plugins.blankie.nonces.script`. An explicit `getNonce`
 option takes precedence if your service obtains its nonce another way.
 
-For Express with Helmet, `withGoogleAnalyticsHelmetCsp` merges the extra sources into Helmet's
-directives. Generate one nonce per response and share it with Helmet and this package:
+For Express or Fastify with Helmet, `withGoogleAnalyticsHelmetCsp` merges the extra sources into
+Helmet's directives. Generate one nonce per response and share it with Helmet and this package.
+For Fastify, register `@fastify/helmet` before the consent plugin; the adapter automatically reads
+`reply.cspNonce.script` when Helmet's CSP nonce generation is enabled:
+
+```js
+import Fastify from 'fastify'
+import helmet from '@fastify/helmet'
+import consentPlugin from '@transform-uk/govuk-analytics-consent/fastify'
+import { withGoogleAnalyticsHelmetCsp } from '@transform-uk/govuk-analytics-consent'
+
+const app = Fastify()
+
+await app.register(helmet, {
+  enableCSPNonces: true,
+  contentSecurityPolicy: {
+    directives: withGoogleAnalyticsHelmetCsp({
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      connectSrc: ["'self'"],
+      imgSrc: ["'self'"],
+      frameSrc: ["'self'"]
+    })
+  }
+})
+
+await app.register(consentPlugin)
+```
+
+To provide your own Fastify nonce source instead, set `getNonce: (request) => ...`. An explicit
+callback takes precedence over the automatic `@fastify/helmet` nonce.
+
+For Express with Helmet, generate one nonce per response and share it with Helmet and this package:
 
 ```js
 import crypto from 'node:crypto'
@@ -248,8 +304,8 @@ All optional.
 | `includeDefaultCookies` | `true` | Set to `false` to omit the built-in consent-cookie row |
 | `secureCookie` | `NODE_ENV === 'production'` | |
 | `cookieMaxAge` | 1 year (seconds) | |
-| `getNonce` | Blankie's script nonce in Hapi; otherwise none | `(request) => string` — applied to every injected `<script>` for CSP; an explicit callback overrides automatic Blankie detection |
-| `getCsrfFormFields` | none | `(request) => fields` — sync or async map of CSRF hidden field names to string values; rendered, HTML-escaped, in both consent forms |
+| `getNonce` | Blankie's script nonce in Hapi, or `@fastify/helmet`'s script nonce in Fastify; otherwise none | `(request) => string` — applied to every injected `<script>` for CSP; an explicit callback overrides automatic nonce detection |
+| `getCsrfFormFields` | none | `(request, response?) => fields` — sync or async map of CSRF hidden field names to string values; rendered, HTML-escaped, in both consent forms |
 | `verifyCsrfFormSubmission` | none | `(request, body) => boolean` — sync or async callback for validating a parsed consent POST; returning `false` responds with `403` |
 
 ## CSRF protection
@@ -309,6 +365,37 @@ registerGovUkAnalyticsConsent(app, {
   getCsrfFormFields: (request) => ({ _csrf: generateToken(request) })
 })
 ```
+
+### Fastify with @fastify/csrf-protection
+
+[`@fastify/csrf-protection`](https://github.com/fastify/csrf-protection) provides a Fastify hook for
+validating tokens and `reply.generateCsrf()` for generating them. Register the cookie and CSRF
+plugins first. Since the form token is in the parsed request body, use `preValidation` rather than
+`onRequest` for the protection hook:
+
+```js
+import Fastify from 'fastify'
+import cookie from '@fastify/cookie'
+import csrfProtection from '@fastify/csrf-protection'
+import consentPlugin from '@transform-uk/govuk-analytics-consent/fastify'
+
+const app = Fastify()
+
+await app.register(cookie, { secret: process.env.COOKIE_SECRET })
+await app.register(csrfProtection, { cookieOpts: { signed: true } })
+app.addHook('preValidation', app.csrfProtection)
+
+await app.register(consentPlugin, {
+  getCsrfFormFields: async (_request, reply) => ({
+    _csrf: await reply.generateCsrf()
+  })
+})
+```
+
+The global hook validates unsafe requests, including the consent POST, before its handler runs. If
+you prefer route-specific protection, use `verifyCsrfFormSubmission` with your application's token
+verification function instead. Keep the cookie signing secret outside source control and use HTTPS
+in production.
 
 ### Express with csrf-csrf
 
@@ -551,8 +638,8 @@ success notification banner — matching a real `govukNotificationBanner({ type:
 — with a "Go back to the page you were looking at" link pointing to wherever the user came from.
 No extra markup is needed in your main layout; it's all part of `govukAnalyticsConsentCookiesPage`.
 
-See [examples/express/views/cookies.njk](examples/express/views/cookies.njk) and
-[examples/express/views/index.njk](examples/express/views/index.njk) for a full example.
+See [examples/views/cookies.njk](examples/views/cookies.njk) and
+[examples/views/index.njk](examples/views/index.njk) for a full example.
 
 ## Removing cookies on rejection
 

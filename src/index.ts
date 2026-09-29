@@ -35,6 +35,7 @@ export {
   registerExpress,
   govukAnalyticsConsentPlugin
 }
+export { default as govukAnalyticsConsentFastifyPlugin } from './integrations/fastify.js'
 export { isHapiServer, isExpressApp }
 export type { HapiPlugin, HapiServerLike } from './integrations/hapi.js'
 export type { ExpressAppLike }

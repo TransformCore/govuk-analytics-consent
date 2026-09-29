@@ -14,7 +14,7 @@ const usesPersonalization = extraCategories.includes('personalization')
 const app = express()
 
 nunjucks.configure(
-  [govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-frontend/dist', 'examples/express/views'],
+  [govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-frontend/dist', 'examples/views'],
   { express: app, autoescape: true }
 )
 

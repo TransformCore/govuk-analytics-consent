@@ -127,7 +127,8 @@ export interface GovUkAnalyticsConsentOptions {
   getNonce?: (request: unknown) => string | null | undefined
   /** Return CSRF hidden fields for the current request. Names and values are HTML-escaped. */
   getCsrfFormFields?: (
-    request: unknown
+    request: unknown,
+    response?: unknown
   ) => Record<string, string> | Promise<Record<string, string>>
   /** Verify a submitted CSRF-protected consent form when middleware does not protect the route. */
   verifyCsrfFormSubmission?: (

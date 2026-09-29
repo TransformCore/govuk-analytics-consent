@@ -17,7 +17,7 @@ const env = new nunjucks.Environment(
   new nunjucks.FileSystemLoader([
     govukAnalyticsConsentTemplatePath(),
     'node_modules/govuk-frontend/dist',
-    'examples/hapi/views'
+    'examples/views'
   ])
 )
 
@@ -31,7 +31,7 @@ server.views({
     }
   },
   relativeTo: process.cwd(),
-  path: 'examples/hapi/views'
+  path: 'examples/views'
 })
 
 // Reads GTM_CONTAINER_ID and GA_MEASUREMENT_ID from the environment; gaCookies()
