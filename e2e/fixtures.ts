@@ -1,5 +1,5 @@
 import { test as base, expect, type BrowserContext, type Page } from '@playwright/test'
-import { defaultMessages, welshMessages } from '../src/consent/messages.js'
+import { getDefaultMessages } from '../src/consent/messages.js'
 import { buildCategoryPreset } from '../src/consent/categories.js'
 import { scenarios, type Scenario } from './scenarios.js'
 import type { ConsentMessages, CookieCategory } from '../src/consent/types.js'
@@ -34,7 +34,7 @@ export const serverMessages = {
 export const test = base.extend<ScenarioOptions & Fixtures>({
   scenario: [scenarios[0]!, { option: true }],
   messages: async ({ scenario }, use) => {
-    await use(scenario.language === 'cy' ? welshMessages : defaultMessages)
+    await use(getDefaultMessages(scenario.language))
   },
   bannerTitle: async ({ messages }, use) => {
     await use(format(messages.bannerTitle, { serviceName: SERVICE_NAME }))

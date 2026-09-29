@@ -50,6 +50,10 @@ beforeEach(async () => {
     options: {
       gtmContainerId: 'GTM-ABC123',
       cookies: [gaCookies('G-ABC123')],
+      messages: {
+        en: { acceptAll: 'Accept everything' },
+        cy: { acceptAll: 'Derbyn popeth' }
+      },
       getCsrfFormFields: async () => ({ csrfToken: 'hapi-token' })
     }
   })
@@ -77,6 +81,20 @@ afterEach(async () => {
 })
 
 describe('hapi integration', () => {
+  it('renders each request in its preferred language with its own overrides', async () => {
+    const english = await server.inject({ url: '/start', headers: { 'accept-language': 'en' } })
+    const welsh = await server.inject({ url: '/start', headers: { 'accept-language': 'cy-GB' } })
+    const fallback = await server.inject({ url: '/start', headers: { 'accept-language': 'fr' } })
+
+    expect(english.result).toContain('Accept everything')
+    expect(english.result).toContain('Reject additional cookies')
+    expect(english.result).not.toContain('Derbyn popeth')
+    expect(welsh.result).toContain('Derbyn popeth')
+    expect(welsh.result).toContain('Gwrthod cwcis ychwanegol')
+    expect(welsh.result).not.toContain('Accept everything')
+    expect(fallback.result).toContain('Accept everything')
+  })
+
   it('exposes consent state to request handlers', async () => {
     const withoutChoice = await server.inject('/request-consent/analytics')
     const essential = await server.inject('/request-consent/essential')

@@ -16,7 +16,7 @@ const HAPI = 'e2e/servers/hapi.js'
 const gtm = { gtmContainerId: 'GTM-E2ETEST', gaMeasurementId: 'G-E2ETEST' }
 const noGtm = { gtmContainerId: null, gaMeasurementId: null }
 
-// Express example uses English messages; Hapi example uses welshMessages.
+// E2E Express fixtures use English; E2E Hapi fixtures select Welsh.
 export const scenarios: Scenario[] = [
   { name: 'express', server: EXPRESS, port: 3101, language: 'en', ...noGtm, extraCategories: [] },
   { name: 'express-personalization-gtm', server: EXPRESS, port: 3102, language: 'en', ...gtm, extraCategories: ['personalization'] },

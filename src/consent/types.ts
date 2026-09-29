@@ -1,3 +1,5 @@
+import type { LanguageCode, LocalizedMessages } from './messages.js'
+
 export interface ConsentState {
   version: number
   /** `null` means the user has not made a choice yet; keys are non-essential category ids. */
@@ -115,7 +117,10 @@ export interface GovUkAnalyticsConsentOptions {
   /** Set to `false` to omit the built-in consent-cookie row. Defaults to `true`. */
   includeDefaultCookies?: boolean
   serviceName?: string
-  messages?: Partial<ConsentMessages>
+  /** Partial message overrides for each supported language. */
+  messages?: LocalizedMessages
+  /** Select a language from this request; defaults to the browser's Accept-Language preference. */
+  getLanguage?: (request: unknown) => string | undefined | Promise<string | undefined>
   secureCookie?: boolean
   cookieMaxAge?: number
   /** Return a CSP nonce for the current request; applied to every injected <script>. */
@@ -150,6 +155,8 @@ export interface ResolvedOptions {
   cookies: CookieDefinition[]
   serviceName: string
   messages: ConsentMessages
+  getLanguage?: GovUkAnalyticsConsentOptions['getLanguage']
+  localize: (language: LanguageCode) => Pick<ResolvedOptions, 'messages' | 'categories' | 'cookies'>
   cookie: ResolvedCookieOptions
   getCsrfFormFields?: GovUkAnalyticsConsentOptions['getCsrfFormFields']
   verifyCsrfFormSubmission?: GovUkAnalyticsConsentOptions['verifyCsrfFormSubmission']

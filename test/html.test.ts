@@ -140,14 +140,16 @@ describe('renderConsentCookiesPage', () => {
   it('renders category and default-cookie copy from the configured messages', () => {
     const html = cookiesPage({
       messages: {
-        essentialCategoryTitle: 'Cwcis hanfodol',
-        essentialCategoryDescription: 'Mae hyn yn angenrheidiol.',
-        analyticsCategoryTitle: 'Cwcis dadansoddi',
-        analyticsCategoryDescription: 'Dadansoddiad.',
-        defaultCookiePurpose: 'Cadw’ch dewisiadau.',
-        tableHeaderName: 'Enw',
-        tableHeaderPurpose: 'Pwrpas',
-        tableHeaderExpiry: 'Dyddiad dod i ben'
+        en: {
+          essentialCategoryTitle: 'Cwcis hanfodol',
+          essentialCategoryDescription: 'Mae hyn yn angenrheidiol.',
+          analyticsCategoryTitle: 'Cwcis dadansoddi',
+          analyticsCategoryDescription: 'Dadansoddiad.',
+          defaultCookiePurpose: 'Cadw’ch dewisiadau.',
+          tableHeaderName: 'Enw',
+          tableHeaderPurpose: 'Pwrpas',
+          tableHeaderExpiry: 'Dyddiad dod i ben'
+        }
       }
     })
 

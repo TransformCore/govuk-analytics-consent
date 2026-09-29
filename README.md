@@ -1,6 +1,6 @@
 # @transform-uk/govuk-analytics-consent
 
-Near zero-configuration GOV.UK cookie consent banner, Google Tag Manager loading and Google
+Near zero-configuration GOV.UK cookie consent banner, including Google Tag Manager loading and Google
 Consent Mode integration for Node.js services. Built for Defra Hapi services, but
 framework-agnostic with a first-class Express adapter.
 
@@ -237,7 +237,7 @@ All optional.
 | --- | --- | --- |
 | `gtmContainerId` | `process.env.GTM_CONTAINER_ID` | Must match `GTM-XXXXXXX`; omitted means the service runs un-instrumented |
 | `cookieName` | `govuk_analytics_consent` | |
-| `cookieVersion` | `1` | Bumping it re-prompts every user. Use this if you need to ask for new consent. Details are in the [Cookies page design pattern](https://design-system.service.gov.uk/patterns/cookies-page/#keeping-your-cookies-page-up-to-date-and-asking-for-new-consent) |
+| `cookieVersion` | `1` | Bumping it re-prompts every user. Use this if you need to ask for new consent. Details for when you might need to trigger this are in the [Cookies page design pattern](https://design-system.service.gov.uk/patterns/cookies-page/#keeping-your-cookies-page-up-to-date-and-asking-for-new-consent) |
 | `routePrefix` | `/govuk-analytics-consent` | |
 | `cookiesPageUrl` | none | Renders the banner's "View cookies" link; same-origin paths only |
 | `consentWaitForUpdate` | `500` | Consent Mode `wait_for_update` in ms; `false` omits it |
@@ -369,79 +369,64 @@ The default categories are strictly necessary cookies and cookies that measure w
 strictly necessary category grants `security_storage`; the analytics category controls
 `analytics_storage`.
 
-Three additional category presets are exported for services that use the corresponding Google
+Three additional category presets are available for services that use the corresponding Google
 Consent Mode signals. They are not enabled by default:
 
-| Export | Cookies-page title | Consent Mode signals |
+| Preset | Cookies-page title | Consent Mode signals |
 | --- | --- | --- |
-| `advertisingCategory` | Cookies that help with our communications and marketing | `ad_storage`, `ad_user_data`, `ad_personalization` |
-| `functionalityCategory` | Cookies that enable additional functionality | `functionality_storage` |
-| `personalizationCategory` | Cookies that remember your settings | `personalization_storage` |
+| `advertising` | Cookies that help with our communications and marketing | `ad_storage`, `ad_user_data`, `ad_personalization` |
+| `functionality` | Cookies that enable additional functionality | `functionality_storage` |
+| `personalization` | Cookies that remember your settings | `personalization_storage` |
 
 Enable all three alongside the defaults:
 
 ```js
-import {
-  advertisingCategory,
-  defaultCategories,
-  functionalityCategory,
-  personalizationCategory,
-  registerGovUkAnalyticsConsent
-} from '@transform-uk/govuk-analytics-consent'
+import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
 
 registerGovUkAnalyticsConsent(app, {
-  categories: [
-    ...defaultCategories,
-    advertisingCategory,
-    functionalityCategory,
-    personalizationCategory
-  ]
+  categories: ['default', 'advertising', 'functionality', 'personalization']
 })
 ```
 
-Or import only the category presets the service needs. Tags should require the signals associated
+Include only the category presets the service needs. Presets use the selected request language;
+custom category objects retain their own text. Tags should require the signals associated
 with their category in GTM so each preference actually controls whether those tags can run.
 
 ## Localised copy
 
-The library includes sensible English defaults, and you can override the copy for any locale. For a built-in Welsh set, import `welshMessages`:
+Built-in English and Welsh messages are selected for each request from the browser's `Accept-Language` header. Regional codes such as `cy-GB` are supported; missing or unsupported preferences fall back to English. The same language is used for the banner, cookies page, category presets, and built-in cookie descriptions:
 
 ```js
-import { registerGovUkAnalyticsConsent, welshMessages } from '@transform-uk/govuk-analytics-consent'
+import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
 
 registerGovUkAnalyticsConsent(server, {
-  serviceName: 'Gwasanaeth',
-  messages: welshMessages
-})
-```
-
-`messages` localizes the interface copy. Category factories receive the resolved messages too, so
-they can localize category titles and descriptions:
-
-```js
-import {
-  registerGovUkAnalyticsConsent,
-  welshMessages
-} from '@transform-uk/govuk-analytics-consent'
-
-registerGovUkAnalyticsConsent(server, {
-  messages: welshMessages,
+  serviceName: 'Example service',
   categories: ['default', 'personalization']
 })
 ```
 
-You can also provide a partial object to override only the strings you need:
+If your service selects a language through its own route or session, use `getLanguage` to take priority over the browser preference. Returning `undefined` uses `Accept-Language` instead:
 
 ```js
-registerGovUkAnalyticsConsent(app, {
-  serviceName: 'Apply for a licence',
+registerGovUkAnalyticsConsent(server, {
+  getLanguage: (request) => request.params.language
+})
+```
+
+Use `messages` to override individual strings for each language. Overrides for one language do not affect the other, and unspecified strings retain their built-in translations:
+
+```js
+registerGovUkAnalyticsConsent(server, {
   messages: {
-    acceptAll: 'Derbyn pob cwci',
-    rejectAll: 'Gwrthod cwcis ychwanegol',
-    changeSettings: 'Newid eich gosodiadau cwcis'
+    en: { acceptAll: 'Accept cookies' },
+    cy: { acceptAll: 'Derbyn cwcis', analyticsCategoryTitle: 'Cwcis dadansoddi' }
   }
 })
 ```
+
+An unsupported language falls back to English, including any `messages.en` overrides. Cookie factories receive the selected, overridden messages. For a fixed Welsh service, use `getLanguage: () => 'cy'`; `getDefaultMessages('cy')` is available when a complete message object is needed outside the registration options.
+
+If upgrading from an earlier version, move flat `messages` overrides under their language code. For HTML cached outside the library, vary the cache on `Accept-Language` (or your service's selected language) so one user's localized page is not served to another.
 
 The full message structure is available as `ConsentMessages`, and it supports banner text, cookies-page text, category titles/descriptions, table headings, radio labels, and notification copy.
 

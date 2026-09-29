@@ -48,7 +48,7 @@ export function defaultCookieDefinitions({
   cookieMaxAge,
   messages
 }: DefaultCookieContext): CookieDefinition[] {
-  const resolvedMessages = { ...defaultMessages, ...messages }
+  const resolvedMessages = { ...defaultMessages.en, ...messages }
   const cookies: CookieDefinition[] = [
     {
       name: cookieName,
