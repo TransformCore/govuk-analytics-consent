@@ -46,7 +46,9 @@ export function safeInternalPath(
     return fallback
   }
 
-  return decoded
+  const url = new URL(decoded, 'https://internal.local')
+
+  return url.pathname + url.search + url.hash
 }
 
 export function normaliseRoutePrefix(value: string): string {
