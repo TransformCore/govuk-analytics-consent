@@ -35,7 +35,7 @@ export function safeInternalPath(value: unknown, fallback = '/'): string {
     return fallback
   }
 
-  return trimmed
+  return decoded
 }
 
 export function normaliseRoutePrefix(value: string): string {
