@@ -4,14 +4,17 @@
  * or control characters) is rejected so a caller-supplied value can never
  * become an open redirect or a dangerous link.
  */
-export function safeInternalPath(value: unknown, fallback = '/'): string {
+export function safeInternalPath(
+  value: unknown,
+  fallback = '/',
+): string {
   if (typeof value !== 'string') {
     return fallback
   }
 
   const trimmed = value.trim()
 
-  if (trimmed === '') {
+  if (!trimmed) {
     return fallback
   }
 
@@ -20,18 +23,26 @@ export function safeInternalPath(value: unknown, fallback = '/'): string {
   try {
     decoded = decodeURIComponent(trimmed)
   } catch {
-    decoded = trimmed
+    return fallback
+  }
+
+  if (/%[0-9a-f]{2}/i.test(decoded)) {
+    return fallback
   }
 
   if (!decoded.startsWith('/')) {
     return fallback
   }
 
-  if (decoded.startsWith('//') || decoded.startsWith('/\\') || decoded.includes('\\')) {
+  if (
+    decoded.startsWith('//') ||
+    decoded.startsWith('/\\') ||
+    decoded.includes('\\')
+  ) {
     return fallback
   }
 
-  if (/^[\x00-\x1f\x7f]/.test(decoded)) {
+  if (/[\x00-\x1f\x7f]/.test(decoded)) {
     return fallback
   }
 
