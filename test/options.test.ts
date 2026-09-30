@@ -406,6 +406,9 @@ describe('safeInternalPath', () => {
   it.each([
     '//evil.example',
     '/\\evil.example',
+    '/%5C%5Cevil.example',
+    '/%2f%2fevil.example',
+    '/%5cjavascript:alert(1)',
     'https://evil.example',
     'javascript:alert(1)',
     '',

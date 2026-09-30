@@ -104,7 +104,14 @@ export function registerExpress(
         encode: (value: string) => value
       })
 
-      res.redirect(303, result.redirectTo)
+      const redirectTo = result.redirectTo
+      const safeRedirectTo = typeof redirectTo === 'string' && redirectTo.startsWith('/') &&
+        !redirectTo.startsWith('//') &&
+        !redirectTo.includes('\\')
+        ? redirectTo
+        : '/'
+
+      res.redirect(303, safeRedirectTo)
     }).catch(next)
   })
 

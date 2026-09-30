@@ -1,7 +1,8 @@
 /**
  * Accepts only same-origin relative paths. Anything else (absolute URLs,
- * protocol-relative `//host`, backslash variants, `javascript:`) is rejected so a
- * caller-supplied value can never become an open redirect or a dangerous link.
+ * protocol-relative `//host`, backslash variants, encoded path separators,
+ * or control characters) is rejected so a caller-supplied value can never
+ * become an open redirect or a dangerous link.
  */
 export function safeInternalPath(value: unknown, fallback = '/'): string {
   if (typeof value !== 'string') {
@@ -10,15 +11,27 @@ export function safeInternalPath(value: unknown, fallback = '/'): string {
 
   const trimmed = value.trim()
 
-  if (!trimmed.startsWith('/')) {
+  if (trimmed === '') {
     return fallback
   }
 
-  if (trimmed.startsWith('//') || trimmed.startsWith('/\\')) {
+  let decoded: string
+
+  try {
+    decoded = decodeURIComponent(trimmed)
+  } catch {
+    decoded = trimmed
+  }
+
+  if (!decoded.startsWith('/')) {
     return fallback
   }
 
-  if (/[\u0000-\u001f\u007f]/.test(trimmed)) {
+  if (decoded.startsWith('//') || decoded.startsWith('/\\') || decoded.includes('\\')) {
+    return fallback
+  }
+
+  if (/^[\x00-\x1f\x7f]/.test(decoded)) {
     return fallback
   }
 
@@ -27,9 +40,17 @@ export function safeInternalPath(value: unknown, fallback = '/'): string {
 
 export function normaliseRoutePrefix(value: string): string {
   const withLeadingSlash = value.startsWith('/') ? value : `/${value}`
-  const withoutTrailingSlash = withLeadingSlash.replace(/\/+$/, '')
+  let withoutTrailingSlash = withLeadingSlash
 
-  if (withoutTrailingSlash === '' || withoutTrailingSlash.startsWith('//')) {
+  while (withoutTrailingSlash.length > 0 && withoutTrailingSlash.endsWith('/')) {
+    withoutTrailingSlash = withoutTrailingSlash.slice(0, -1)
+  }
+
+  if (
+    withoutTrailingSlash === '' ||
+    withoutTrailingSlash.startsWith('//') ||
+    withoutTrailingSlash.includes('\\')
+  ) {
     throw new Error(`Invalid routePrefix: "${value}"`)
   }
 
