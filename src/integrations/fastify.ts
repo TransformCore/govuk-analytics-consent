@@ -105,7 +105,8 @@ export const govukAnalyticsConsentFastifyPlugin: FastifyPluginAsync<GovUkAnalyti
 
       appendSetCookie(reply, [consentCookie])
 
-      return reply.code(303).header('location', safeInternalPath(result.redirectTo, '/')).send()
+      const redirectTo = safeInternalPath(result.redirectTo, '/')
+      return reply.code(303).header('location', redirectTo).send()
     })
   }
 
