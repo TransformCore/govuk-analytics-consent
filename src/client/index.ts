@@ -28,7 +28,8 @@ function parseCategories(value: string | undefined): ClientCategory[] | null {
   }
 
   try {
-    const parsed: unknown = JSON.parse(value)
+    const decoded = decodeURIComponent(value)
+    const parsed: unknown = JSON.parse(decoded)
 
     return Array.isArray(parsed) ? (parsed as ClientCategory[]) : null
   } catch {

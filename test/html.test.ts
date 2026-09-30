@@ -102,7 +102,8 @@ describe('renderConsentScripts', () => {
       cookies: [gaCookies('G-ABC123')]
     })
     const html = renderConsentScripts(buildViewModel(resolved))
-    const json = /data-categories="([^"]*)"/.exec(html)?.[1]?.replace(/&quot;/g, '"') ?? '[]'
+    const encoded = /data-categories="([^"]*)"/.exec(html)?.[1] ?? '[]'
+    const json = decodeURIComponent(encoded)
     const analytics = (JSON.parse(json) as Array<{ id: string; cookies: unknown[] }>).find(
       (category) => category.id === 'analytics'
     )
