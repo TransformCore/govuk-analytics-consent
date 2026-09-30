@@ -2,6 +2,7 @@ import { buildCategoryPreset, buildDefaultCategories } from './categories.js'
 import { defaultCookieDefinitions } from './default-cookies.js'
 import { globToPattern } from './removal.js'
 import { normaliseRoutePrefix, safeInternalPath } from '../shared/url.js'
+import { gtmCspDirectives, mergeCspDirectives } from '../tags/csp.js'
 import { resolveMessages, type LanguageCode } from './messages.js'
 import type {
   CookieDefinition,
@@ -48,6 +49,16 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
 
   const cookieMaxAge = options.cookieMaxAge ?? ONE_YEAR_SECONDS
   const resolvedGtmContainerId = gtmContainerId === '' ? null : gtmContainerId
+  const tags = options.tags ?? []
+  const tagIds = new Set<string>()
+
+  for (const tag of tags) {
+    if (tagIds.has(tag.id)) {
+      throw new Error(`Duplicate tag id: "${tag.id}"`)
+    }
+
+    tagIds.add(tag.id)
+  }
 
   const localize = (language: LanguageCode) => {
     const messages = resolveMessages(language, options.messages)
@@ -102,6 +113,8 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
     messages,
     getLanguage: options.getLanguage,
     localize: localizedDisplay,
+    csp: mergeCspDirectives(gtmCspDirectives, ...tags.map((tag) => tag.csp)),
+    getNonce: options.getNonce,
     getCsrfFormFields: options.getCsrfFormFields,
     verifyCsrfFormSubmission: options.verifyCsrfFormSubmission,
     cookie: {
@@ -126,6 +139,10 @@ function resolveCookieDefinitions(
   const includeDefaults = options.includeDefaultCookies ?? true
   const defaults = includeDefaults ? defaultCookieDefinitions(defaultsContext) : []
   const suppliedCookies: CookieDefinition[] = []
+
+  for (const tag of options.tags ?? []) {
+    suppliedCookies.push(...tag.cookies(defaultsContext.messages))
+  }
 
   for (const cookie of options.cookies ?? []) {
     suppliedCookies.push(

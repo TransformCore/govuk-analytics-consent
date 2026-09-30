@@ -1,9 +1,8 @@
-  getCsrfFormFields: async () => ({ csrf: '<token>&' })
 import express from 'express'
 import nunjucks from 'nunjucks'
 import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { gaCookies, registerGovUkAnalyticsConsent } from '../src/index.js'
+import { googleAnalytics, registerGovUkAnalyticsConsent } from '../src/index.js'
 import { govukAnalyticsConsentTemplatePath } from '../src/ui/template-path.js'
 import type { ConsentRequestState } from '../src/integrations/core.js'
 
@@ -19,7 +18,7 @@ beforeEach(() => {
 
   registerGovUkAnalyticsConsent(app, {
     gtmContainerId: 'GTM-ABC123',
-    cookies: [gaCookies('G-ABC123')],
+    tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
     messages: {
       en: { acceptAll: 'Accept everything' },
       cy: { acceptAll: 'Derbyn popeth' }
@@ -163,7 +162,7 @@ describe('express integration', () => {
     parsed.use(express.urlencoded({ extended: false }))
     registerGovUkAnalyticsConsent(parsed, {
       gtmContainerId: 'GTM-ABC123',
-      cookies: [gaCookies('G-ABC123')]
+      tags: [googleAnalytics({ measurementId: 'G-ABC123' })]
     })
 
     const response = await request(parsed)

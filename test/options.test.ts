@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { resolveOptions } from '../src/consent/options.js'
-import { gaCookies } from '../src/consent/default-cookies.js'
+import { googleAnalytics } from '../src/tags/google-analytics.js'
 import { defaultMessages, getDefaultMessages, negotiateLanguage, resolveMessages, selectLanguage } from '../src/consent/messages.js'
 import { createConsentContext } from '../src/integrations/core.js'
 import { safeInternalPath, normaliseRoutePrefix } from '../src/shared/url.js'
@@ -31,7 +31,7 @@ afterEach(() => {
 describe('resolveOptions', () => {
   it('localizes categories and built-in cookie descriptions per request', async () => {
     const options = resolveOptions({
-      cookies: [gaCookies('G-ABC123')],
+      tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
       messages: { cy: { analyticsCategoryTitle: 'Dadansoddi', gaCookiePurpose: 'Cyfrif ymweliadau' } }
     })
     const english = await createConsentContext(options, { request: { headers: { 'accept-language': 'en' } } })
@@ -221,7 +221,7 @@ describe('cookies table defaults', () => {
 
   it('generates GA cookie rows from a full measurement ID', () => {
     const resolved = resolveOptions({
-      cookies: [gaCookies('G-ABC123')],
+      tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
       messages: {
         en: {
           gaCookiePurpose: 'Custom analytics purpose',
@@ -256,7 +256,7 @@ describe('cookies table defaults', () => {
   })
 
   it('uses a generic GA4 cookie name when no measurement ID is supplied', () => {
-    const resolved = resolveOptions({ cookies: [gaCookies()] })
+    const resolved = resolveOptions({ tags: [googleAnalytics()] })
 
     expect(resolved.cookies.map((cookie) => cookie.name)).toEqual([
       'govuk_analytics_consent',
@@ -267,7 +267,7 @@ describe('cookies table defaults', () => {
 
   it('reads the GA measurement ID from the environment when no ID is passed', () => {
     process.env.GA_MEASUREMENT_ID = 'G-ENV123'
-    const resolved = resolveOptions({ cookies: [gaCookies()] })
+    const resolved = resolveOptions({ tags: [googleAnalytics()] })
 
     expect(resolved.cookies.map((cookie) => cookie.name)).toEqual([
       'govuk_analytics_consent',
@@ -278,7 +278,7 @@ describe('cookies table defaults', () => {
 
   it('prefers an explicit GA measurement ID over the environment', () => {
     process.env.GA_MEASUREMENT_ID = 'G-ENV123'
-    const resolved = resolveOptions({ cookies: [gaCookies('G-EXPLICIT456')] })
+    const resolved = resolveOptions({ tags: [googleAnalytics({ measurementId: 'G-EXPLICIT456' })] })
 
     expect(resolved.cookies.some((cookie) => cookie.name === '_ga_EXPLICIT456')).toBe(true)
     expect(resolved.cookies.some((cookie) => cookie.name === '_ga_ENV123')).toBe(false)
@@ -287,7 +287,7 @@ describe('cookies table defaults', () => {
   it.each(['GA-12345', 'G-abc123', 'UA-123456', 'G-ABC 123'])(
     'rejects the malformed GA measurement ID %s',
     (value) => {
-      expect(() => gaCookies(value)).toThrow(/Invalid GA measurement ID/)
+      expect(() => googleAnalytics({ measurementId: value })).toThrow(/Invalid GA measurement ID/)
     }
   )
 
@@ -295,7 +295,7 @@ describe('cookies table defaults', () => {
     const defaults = resolveOptions({ gtmContainerId: 'GTM-ABC123' })
     const withGaCookies = resolveOptions({
       gtmContainerId: 'GTM-ABC123',
-      cookies: [gaCookies('G-ABC123')]
+      tags: [googleAnalytics({ measurementId: 'G-ABC123' })]
     })
 
     expect(defaults.cookies.some((cookie) => cookie.categoryId === 'analytics')).toBe(false)
@@ -324,8 +324,8 @@ describe('cookies table defaults', () => {
   it('defaults removeOnReject to host-only for non-essential cookies and host-and-parents for GA', () => {
     const resolved = resolveOptions({
       gtmContainerId: 'GTM-ABC123',
+      tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
       cookies: [
-        gaCookies('G-ABC123'),
         { name: 'hotjar', categoryId: 'analytics', purpose: 'Heatmaps', expiry: '1 year' }
       ]
     })

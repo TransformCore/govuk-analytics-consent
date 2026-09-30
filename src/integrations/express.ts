@@ -1,4 +1,4 @@
-import { resolveOptions } from '../consent/options.js'
+import { resolveInput, type GovUkAnalyticsConsentInput } from '../consent/create.js'
 import { clientAsset } from './client-asset.js'
 import {
   consentRoutePaths,
@@ -8,7 +8,7 @@ import {
   verifyConsentSubmission
 } from './core.js'
 import { readQueryParam, safeInternalPath } from '../shared/url.js'
-import type { GovUkAnalyticsConsentOptions, ResolvedOptions } from '../consent/types.js'
+import type { ResolvedOptions } from '../consent/types.js'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -32,9 +32,9 @@ export function isExpressApp(target: unknown): target is ExpressAppLike {
 
 export function registerExpress(
   app: ExpressAppLike,
-  options: GovUkAnalyticsConsentOptions = {}
+  options: GovUkAnalyticsConsentInput = {}
 ): ResolvedOptions {
-  const resolved = resolveOptions(options)
+  const resolved = resolveInput(options)
   const paths = consentRoutePaths(resolved)
 
   app.use((req: any, res: any, next: (error?: unknown) => void) => {
@@ -57,7 +57,7 @@ export function registerExpress(
       currentPath,
       returnTo: returnUrl !== null ? safeInternalPath(returnUrl, currentPath) : undefined,
       cookiesSaved: readQueryParam(currentPath, 'cookies-updated') === 'true',
-      nonce: options.getNonce?.(req) ?? null
+      nonce: resolved.getNonce?.(req) ?? null
     }).then((context) => {
       res.locals.govukAnalyticsConsent = context
       next()

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { resolveOptions } from '../src/consent/options.js'
-import { gaCookies } from '../src/consent/default-cookies.js'
+import { googleAnalytics } from '../src/tags/google-analytics.js'
 import {
   buildExpiryCookies,
   buildRemovalCategories,
@@ -12,8 +12,8 @@ import { createInitialState, withCategoryChoices } from '../src/consent/state.js
 
 const options = resolveOptions({
   gtmContainerId: 'GTM-ABC123',
+  tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
   cookies: [
-    gaCookies('G-ABC123'),
     { name: 'hotjar', categoryId: 'analytics', purpose: 'Heatmaps', expiry: '1 year' },
     { name: 'kept', categoryId: 'analytics', purpose: 'Kept', expiry: '1 year', removeOnReject: 'never' }
   ]

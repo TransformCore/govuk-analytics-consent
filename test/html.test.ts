@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gaCookies } from '../src/consent/default-cookies.js'
+import { googleAnalytics } from '../src/tags/google-analytics.js'
 import { resolveOptions } from '../src/consent/options.js'
 import { createInitialState, withCategoryChoices } from '../src/consent/state.js'
 import {
@@ -99,7 +99,7 @@ describe('renderConsentScripts', () => {
   it('includes the cookie removal matchers for each category', () => {
     const resolved = resolveOptions({
       gtmContainerId: 'GTM-ABC123',
-      cookies: [gaCookies('G-ABC123')]
+      tags: [googleAnalytics({ measurementId: 'G-ABC123' })]
     })
     const html = renderConsentScripts(buildViewModel(resolved))
     const encoded = /data-categories="([^"]*)"/.exec(html)?.[1] ?? '[]'
@@ -163,7 +163,7 @@ describe('renderConsentCookiesPage', () => {
   })
 
   it('lists the default GA cookies for the analytics category', () => {
-    const html = cookiesPage({ cookies: [gaCookies('G-ABC123')] })
+    const html = cookiesPage({ tags: [googleAnalytics({ measurementId: 'G-ABC123' })] })
 
     expect(html).toContain('_ga_ABC123')
     expect(html).toContain('name="cookies[analytics]"')

@@ -1,4 +1,4 @@
-import { resolveOptions } from '../consent/options.js'
+import { resolveInput, type GovUkAnalyticsConsentInput } from '../consent/create.js'
 import { clientAsset } from './client-asset.js'
 import {
   consentRoutePaths,
@@ -8,7 +8,7 @@ import {
   verifyConsentSubmission
 } from './core.js'
 import { readQueryParam, safeInternalPath } from '../shared/url.js'
-import type { GovUkAnalyticsConsentOptions, ResolvedOptions } from '../consent/types.js'
+import type { ResolvedOptions } from '../consent/types.js'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -22,7 +22,7 @@ export interface HapiPlugin {
   name: string
   register: (
     server: HapiServerLike,
-    options?: GovUkAnalyticsConsentOptions
+    options?: GovUkAnalyticsConsentInput
   ) => void
 }
 
@@ -38,9 +38,9 @@ export function isHapiServer(target: unknown): target is HapiServerLike {
 
 export function registerHapi(
   server: HapiServerLike,
-  options: GovUkAnalyticsConsentOptions = {}
+  options: GovUkAnalyticsConsentInput = {}
 ): ResolvedOptions {
-  const resolved = resolveOptions(options)
+  const resolved = resolveInput(options)
   const paths = consentRoutePaths(resolved)
 
   defineCookie(server, resolved)
@@ -124,7 +124,7 @@ export function registerHapi(
           currentPath,
           returnTo: returnUrl !== null ? safeInternalPath(returnUrl, currentPath) : undefined,
           cookiesSaved: readQueryParam(currentPath, 'cookies-updated') === 'true',
-          nonce: requestNonce(options, request)
+          nonce: requestNonce(resolved, request)
         })
       }
     }
@@ -144,9 +144,9 @@ export const govukAnalyticsConsentPlugin: HapiPlugin = {
 
 export default govukAnalyticsConsentPlugin
 
-function requestNonce(options: GovUkAnalyticsConsentOptions, request: any): string | null {
-  if (options.getNonce !== undefined) {
-    return options.getNonce(request) ?? null
+function requestNonce(resolved: ResolvedOptions, request: any): string | null {
+  if (resolved.getNonce !== undefined) {
+    return resolved.getNonce(request) ?? null
   }
 
   const nonce = request.plugins?.blankie?.nonces?.script

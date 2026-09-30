@@ -3,7 +3,8 @@ import Inert from '@hapi/inert'
 import Vision from '@hapi/vision'
 import nunjucks from 'nunjucks'
 import {
-  gaCookies,
+  createGovUkAnalyticsConsent,
+  googleAnalytics,
   govukAnalyticsConsentPlugin,
   govukAnalyticsConsentTemplatePath
 } from '../../dist/index.js'
@@ -34,28 +35,26 @@ server.views({
   path: 'examples/views'
 })
 
-// Reads GTM_CONTAINER_ID and GA_MEASUREMENT_ID from the environment; gaCookies()
-// uses the measurement ID when set, otherwise documents the generic GA4 row.
-await server.register({
-  plugin: govukAnalyticsConsentPlugin,
-  options: {
-    serviceName: 'Example service',
-    cookiesPageUrl: '/cookies',
-    categories: ['default', 'personalization'],
-    cookies: [
-      gaCookies(),
-      { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
-      { name: languageCookieName, categoryId: 'essential', purpose: 'Remembers your language choice', expiry: '1 year' },
-      {
-        name: 'example_preferences',
-        categoryId: 'personalization',
-        purpose: 'Remembers your display preferences',
-        expiry: '1 year'
-      }
-    ],
-    getLanguage: (request) => exampleLanguage(request.headers.cookie)
-  }
+// Reads GTM_CONTAINER_ID and GA_MEASUREMENT_ID from the environment; pass consent.blankieCsp(...) to Blankie if used.
+const consent = createGovUkAnalyticsConsent({
+  serviceName: 'Example service',
+  cookiesPageUrl: '/cookies',
+  categories: ['default', 'personalization'],
+  tags: [googleAnalytics()],
+  cookies: [
+    { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
+    { name: languageCookieName, categoryId: 'essential', purpose: 'Remembers your language choice', expiry: '1 year' },
+    {
+      name: 'example_preferences',
+      categoryId: 'personalization',
+      purpose: 'Remembers your display preferences',
+      expiry: '1 year'
+    }
+  ],
+  getLanguage: (request) => exampleLanguage(request.headers.cookie)
 })
+
+await server.register({ plugin: govukAnalyticsConsentPlugin, options: consent })
 
 server.route({
   method: 'GET',

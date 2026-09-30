@@ -2,7 +2,7 @@ import express from 'express'
 import nunjucks from 'nunjucks'
 import {
   defaultCategories,
-  gaCookies,
+  googleAnalytics,
   registerGovUkAnalyticsConsent,
   govukAnalyticsConsentTemplatePath
 } from '../../dist/index.js'
@@ -22,8 +22,8 @@ registerGovUkAnalyticsConsent(app, {
   serviceName: 'Example service',
   cookiesPageUrl: '/cookies',
   categories,
+  tags: [googleAnalytics()],
   cookies: [
-    gaCookies(),
     { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
     ...(usesPersonalization ? [{ name: 'example_preferences', categoryId: 'personalization', purpose: 'Remembers your display preferences', expiry: '1 year' }] : []),
     ...(extraCategories.includes('advertising') ? [{ name: 'example_advertising', categoryId: 'advertising', purpose: 'Tests advertising cookie removal', expiry: '1 year' }] : []),

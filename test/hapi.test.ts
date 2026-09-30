@@ -1,10 +1,9 @@
-  getCsrfFormFields: async () => ({ csrfToken: 'hapi-token' })
 import Hapi from '@hapi/hapi'
 import Vision from '@hapi/vision'
 import nunjucks from 'nunjucks'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import govukAnalyticsConsentPlugin from '../src/integrations/hapi.js'
-import { gaCookies } from '../src/consent/default-cookies.js'
+import { googleAnalytics } from '../src/tags/google-analytics.js'
 import { govukAnalyticsConsentTemplatePath } from '../src/ui/template-path.js'
 import type { ConsentRequestState } from '../src/integrations/core.js'
 
@@ -49,7 +48,7 @@ beforeEach(async () => {
     plugin: govukAnalyticsConsentPlugin,
     options: {
       gtmContainerId: 'GTM-ABC123',
-      cookies: [gaCookies('G-ABC123')],
+      tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
       messages: {
         en: { acceptAll: 'Accept everything' },
         cy: { acceptAll: 'Derbyn popeth' }

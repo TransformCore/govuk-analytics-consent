@@ -1,7 +1,8 @@
 import express from 'express'
 import nunjucks from 'nunjucks'
 import {
-  gaCookies,
+  createGovUkAnalyticsConsent,
+  googleAnalytics,
   registerGovUkAnalyticsConsent,
   govukAnalyticsConsentTemplatePath
 } from '../../dist/index.js'
@@ -15,14 +16,13 @@ nunjucks.configure(
   { express: app, autoescape: true }
 )
 
-// Reads GTM_CONTAINER_ID and GA_MEASUREMENT_ID from the environment; gaCookies()
-// uses the measurement ID when set, otherwise documents the generic GA4 row.
-registerGovUkAnalyticsConsent(app, {
+// Reads GTM_CONTAINER_ID and GA_MEASUREMENT_ID from the environment; pass consent.helmetCsp(...) to Helmet if used.
+const consent = createGovUkAnalyticsConsent({
   serviceName: 'Example service',
   cookiesPageUrl: '/cookies',
   categories: ['default', 'personalization'],
+  tags: [googleAnalytics()],
   cookies: [
-    gaCookies(),
     { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
     { name: languageCookieName, categoryId: 'essential', purpose: 'Remembers your language choice', expiry: '1 year' },
     {
@@ -34,6 +34,8 @@ registerGovUkAnalyticsConsent(app, {
   ],
   getLanguage: (request) => exampleLanguage(request.headers.cookie)
 })
+
+registerGovUkAnalyticsConsent(app, consent)
 
 app.use((req, res, next) => {
   Object.assign(res.locals, languageView(req.headers.cookie, req.originalUrl))

@@ -2,7 +2,7 @@ import Hapi from '@hapi/hapi'
 import Inert from '@hapi/inert'
 import Vision from '@hapi/vision'
 import nunjucks from 'nunjucks'
-import { gaCookies, govukAnalyticsConsentPlugin, govukAnalyticsConsentTemplatePath } from '../../dist/index.js'
+import { googleAnalytics, govukAnalyticsConsentPlugin, govukAnalyticsConsentTemplatePath } from '../../dist/index.js'
 
 const port = Number(process.env.PORT ?? 3000)
 const extraCategories = (process.env.EXTRA_COOKIE_CATEGORIES ?? '').split(',').map((id) => id.trim()).filter(Boolean)
@@ -31,8 +31,8 @@ await server.register({
     serviceName: 'Example service',
     cookiesPageUrl: '/cookies',
     categories,
+    tags: [googleAnalytics()],
     cookies: [
-      gaCookies(),
       { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
       ...(usesPersonalization ? [{ name: 'example_preferences', categoryId: 'personalization', purpose: 'Remembers your display preferences', expiry: '1 year' }] : []),
       ...(extraCategories.includes('advertising') ? [{ name: 'example_advertising', categoryId: 'advertising', purpose: 'Tests advertising cookie removal', expiry: '1 year' }] : []),

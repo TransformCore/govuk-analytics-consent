@@ -1,4 +1,6 @@
 import type { LanguageCode, LocalizedMessages } from './messages.js'
+import type { ResolvedCspDirectives } from '../tags/csp.js'
+import type { ConsentTag } from '../tags/types.js'
 
 export interface ConsentState {
   version: number
@@ -91,6 +93,20 @@ export interface ConsentMessages {
   gaSessionCookiePurpose: string
   gaCookieProvider: string
   gaCookieExpiry: string
+  hotjarSessionUserCookiePurpose: string
+  hotjarSessionCookiePurpose: string
+  hotjarCookiePurpose: string
+  hotjarCookieProvider: string
+  hotjarSessionUserCookieExpiry: string
+  hotjarSessionCookieExpiry: string
+  hotjarCookieExpiry: string
+  clarityUserCookiePurpose: string
+  claritySessionCookiePurpose: string
+  clarityClidCookiePurpose: string
+  clarityMuidCookiePurpose: string
+  clarityCookieProvider: string
+  clarityUserCookieExpiry: string
+  claritySessionCookieExpiry: string
   tableHeaderName: string
   tableHeaderPurpose: string
   tableHeaderExpiry: string
@@ -112,7 +128,9 @@ export interface GovUkAnalyticsConsentOptions {
   consentWaitForUpdate?: number | false
   /** Built-in category presets or custom category objects. Presets use the resolved messages. */
   categories?: CookieCategoryInput[]
-  /** Cookie definitions or factories called with the resolved messages; merges with built-in cookies by `name`. */
+  /** Tags loaded through GTM; each adds its cookie rows and CSP sources. */
+  tags?: ConsentTag[]
+  /** Cookie definitions or factories called with the resolved messages; merges with built-in and tag cookies by `name`. */
   cookies?: CookieDefinitionInput[]
   /** Set to `false` to omit the built-in consent-cookie row. Defaults to `true`. */
   includeDefaultCookies?: boolean
@@ -159,6 +177,9 @@ export interface ResolvedOptions {
   getLanguage?: GovUkAnalyticsConsentOptions['getLanguage']
   localize: (language: LanguageCode) => Pick<ResolvedOptions, 'messages' | 'categories' | 'cookies'>
   cookie: ResolvedCookieOptions
+  /** GTM sources merged with every tag's sources. */
+  csp: ResolvedCspDirectives
+  getNonce?: GovUkAnalyticsConsentOptions['getNonce']
   getCsrfFormFields?: GovUkAnalyticsConsentOptions['getCsrfFormFields']
   verifyCsrfFormSubmission?: GovUkAnalyticsConsentOptions['verifyCsrfFormSubmission']
 }
