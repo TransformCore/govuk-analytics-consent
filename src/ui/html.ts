@@ -2,7 +2,7 @@ import { hasChoice, isCategoryAccepted } from '../consent/state.js'
 import { buildRemovalCategories } from '../consent/removal.js'
 import { headSnippet, nonceAttribute } from '../gtm/snippets.js'
 import { gtmNoscriptSnippet } from '../gtm/loader.js'
-import { escapeHtml } from '../shared/escape.js'
+import { escapeHtml, safeHtmlAttribute } from '../shared/escape.js'
 import { appendQueryParam, safeInternalPath } from '../shared/url.js'
 import type { ConsentViewModel } from './view-model.js'
 import type { CookieCategory, CookieDefinition, ConsentState } from '../consent/types.js'
@@ -40,14 +40,15 @@ export function renderConsentScripts(viewModel: ConsentViewModel): string {
     }))
   )
 
+  const safeCategoriesJson = encodeURIComponent(categoriesJson)
   const attributes = [
-    `src="${escapeHtml(`${viewModel.routePrefix}/consent.js`)}"`,
+    `src="${safeHtmlAttribute(`${viewModel.routePrefix}/consent.js`)}"`,
     'defer',
     `data-module="${CLIENT_SCRIPT_MODULE}"`,
-    `data-cookie-name="${escapeHtml(viewModel.cookieName)}"`,
+    `data-cookie-name="${safeHtmlAttribute(viewModel.cookieName)}"`,
     `data-cookie-version="${viewModel.cookieVersion}"`,
-    `data-route-prefix="${escapeHtml(viewModel.routePrefix)}"`,
-    `data-categories="${escapeHtml(categoriesJson)}"`
+    `data-route-prefix="${safeHtmlAttribute(viewModel.routePrefix)}"`,
+    `data-categories="${safeHtmlAttribute(safeCategoriesJson)}"`
   ].join(' ')
 
   return `<script${nonceAttribute(viewModel.nonce)} ${attributes}></script>`
@@ -60,8 +61,8 @@ export function renderConsentBanner(viewModel: ConsentViewModel): string {
   }
 
   const serviceName = viewModel.serviceName
-  const action = escapeHtml(`${viewModel.routePrefix}/consent`)
-  const returnUrl = escapeHtml(safeInternalPath(viewModel.currentPath))
+  const action = safeHtmlAttribute(`${viewModel.routePrefix}/consent`)
+  const returnUrl = safeHtmlAttribute(safeInternalPath(viewModel.currentPath))
   const ariaLabel = escapeHtml(formatMessage(viewModel.messages.bannerTitle, { serviceName }))
 
   return [
@@ -132,15 +133,15 @@ function renderCookiesPageLink(viewModel: ConsentViewModel, text: string): strin
     safeInternalPath(viewModel.currentPath)
   )
 
-  return `<a class="govuk-link" href="${escapeHtml(href)}">${escapeHtml(text)}</a>`
+  return `<a class="govuk-link" href="${safeHtmlAttribute(href)}">${escapeHtml(text)}</a>`
 }
 
 export const NOTIFICATION_BANNER_TITLE_ID = 'govuk-notification-banner-title'
 
 /** GOV.UK cookies-page pattern: per-category tables of cookies, then a Change your cookie settings form. */
 export function renderConsentCookiesPage(viewModel: ConsentViewModel): string {
-  const action = escapeHtml(`${viewModel.routePrefix}/consent`)
-  const returnUrl = escapeHtml(safeInternalPath(viewModel.currentPath))
+  const action = safeHtmlAttribute(`${viewModel.routePrefix}/consent`)
+  const returnUrl = safeHtmlAttribute(safeInternalPath(viewModel.currentPath))
   const pageTitle = escapeHtml(formatMessage(viewModel.messages.cookiesPageTitle, { serviceName: viewModel.serviceName }))
   const intro = escapeHtml(
     formatMessage(viewModel.messages.cookiesPageIntro, { serviceName: viewModel.serviceName })
@@ -177,7 +178,7 @@ function renderSavedNotificationBanner(viewModel: ConsentViewModel): string {
     return ''
   }
 
-  const backLink = escapeHtml(safeInternalPath(viewModel.returnTo))
+  const backLink = safeHtmlAttribute(safeInternalPath(viewModel.returnTo))
   const successText = escapeHtml(viewModel.messages.successBanner)
   const successLinkText = escapeHtml(viewModel.messages.successBannerLink)
 

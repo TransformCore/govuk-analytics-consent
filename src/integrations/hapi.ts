@@ -80,7 +80,8 @@ export function registerHapi(
           cookieHeader: request.headers.cookie,
           hostname: request.info?.hostname
         })
-        const response = h.redirect(result.redirectTo).code(303)
+        const redirectTo = safeInternalPath(result.redirectTo, '/')
+        const response = h.redirect(redirectTo).code(303)
 
         if (result.expiryCookies.length > 0) {
           response.header('set-cookie', result.expiryCookies, { append: true })

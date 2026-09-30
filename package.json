@@ -33,6 +33,10 @@
       "types": "./dist/integrations/express.d.ts",
       "import": "./dist/integrations/express.js"
     },
+    "./fastify": {
+      "types": "./dist/integrations/fastify.d.ts",
+      "import": "./dist/integrations/fastify.js"
+    },
     "./nunjucks": {
       "types": "./dist/ui/template-path.d.ts",
       "import": "./dist/ui/template-path.js"
@@ -49,6 +53,7 @@
     "build:client": "esbuild src/client/index.ts --bundle --format=iife --minify --target=es2017 --outfile=dist/client/consent.js",
     "example:express": "npm run build && node examples/express/server.js",
     "example:hapi": "npm run build && node examples/hapi/server.js",
+    "example:fastify": "npm run build && node examples/fastify/server.js",
     "prepare": "npm run build",
     "prepublishOnly": "npm run typecheck && npm test",
     "typecheck": "tsc --noEmit",
@@ -58,14 +63,24 @@
     "test:e2e": "npm run build && playwright test"
   },
   "peerDependencies": {
+    "fastify": ">=5",
+    "fastify-plugin": ">=6",
     "govuk-frontend": ">=4.0.0"
   },
   "peerDependenciesMeta": {
+    "fastify": {
+      "optional": true
+    },
+    "fastify-plugin": {
+      "optional": true
+    },
     "govuk-frontend": {
       "optional": true
     }
   },
   "devDependencies": {
+    "@fastify/static": "^10.1.5",
+    "@fastify/view": "^12.0.0",
     "@hapi/hapi": "^21.3.12",
     "@hapi/inert": "^7.1.0",
     "@hapi/vision": "^7.0.3",
@@ -76,6 +91,8 @@
     "@types/supertest": "^6.0.2",
     "esbuild": "^0.28.2",
     "express": "^4.21.2",
+    "fastify": "^5.12.5",
+    "fastify-plugin": "^6.0.0",
     "govuk-frontend": "^5.11.2",
     "jsdom": "^25.0.1",
     "nunjucks": "^3.2.4",
@@ -90,6 +107,7 @@
     "consent-mode",
     "google-tag-manager",
     "hapi",
-    "express"
+    "express",
+    "fastify"
   ]
 }

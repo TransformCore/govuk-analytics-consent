@@ -11,7 +11,7 @@ const app = express()
 const port = Number(process.env.PORT ?? 3000)
 
 nunjucks.configure(
-  [govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-frontend/dist', 'examples/express/views'],
+  [govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-frontend/dist', 'examples/views'],
   { express: app, autoescape: true }
 )
 

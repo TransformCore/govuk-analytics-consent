@@ -1,9 +1,10 @@
 {% extends "govuk-analytics-consent/template.njk" %}
+{% from "govuk-analytics-consent/macro.njk" import govukAnalyticsConsentCookiesPage %}
 {% from "govuk/components/footer/macro.njk" import govukFooter %}
 
 {% set assetPath = "/govuk-frontend/assets" %}
 
-{% block pageTitle %}Example service{% endblock %}
+{% block pageTitle %}{{ govukAnalyticsConsent.messages.cookiesPageTitle }} - Example service{% endblock %}
 
 {% block head %}
   {{ super() }}
@@ -11,11 +12,7 @@
 {% endblock %}
 
 {% block content %}
-  <h1 class="govuk-heading-l">Example service</h1>
-  <div class="govuk-inset-text">
-    <strong>Server-side consent check:</strong>
-    {{ personalizationMessage }}
-  </div>
+  {{ govukAnalyticsConsentCookiesPage(govukAnalyticsConsent) }}
 {% endblock %}
 
 {% block footer %}

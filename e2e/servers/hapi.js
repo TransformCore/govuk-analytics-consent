@@ -14,7 +14,7 @@ await server.register([Inert, Vision])
 const env = new nunjucks.Environment(new nunjucks.FileSystemLoader([
   govukAnalyticsConsentTemplatePath(),
   'node_modules/govuk-frontend/dist',
-  'examples/hapi/views'
+  'examples/views'
 ]))
 server.views({
   engines: { njk: { compile: (src, opts) => {
@@ -22,7 +22,7 @@ server.views({
     return (context) => template.render(context)
   } } },
   relativeTo: process.cwd(),
-  path: 'examples/hapi/views'
+  path: 'examples/views'
 })
 
 await server.register({

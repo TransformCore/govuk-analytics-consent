@@ -403,9 +403,19 @@ describe('safeInternalPath', () => {
     expect(safeInternalPath('/start?a=1')).toBe('/start?a=1')
   })
 
+  it('returns the validated decoded path instead of the raw input', () => {
+    expect(safeInternalPath('/%73tart')).toBe('/start')
+  })
+
   it.each([
     '//evil.example',
     '/\\evil.example',
+    '/%5C%5Cevil.example',
+    '/%2f%2fevil.example',
+    '/%5cjavascript:alert(1)',
+    '/%252f%252fevil.example',
+    '/%25252f%25252fevil.example',
+    '/invalid%encoding',
     'https://evil.example',
     'javascript:alert(1)',
     '',

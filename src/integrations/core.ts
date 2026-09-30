@@ -29,6 +29,7 @@ export interface ConsentContext extends ConsentViewModel {
 
 export interface ContextInput {
   request?: unknown
+  response?: unknown
   cookieHeader?: string | null
   consent?: ConsentState
   currentPath?: string
@@ -41,6 +42,7 @@ export async function createConsentContext(
   options: ResolvedOptions,
   {
     request,
+    response,
     cookieHeader,
     consent,
     currentPath = '/',
@@ -50,7 +52,7 @@ export async function createConsentContext(
   }: ContextInput = {}
 ): Promise<ConsentContext> {
   const resolvedConsent = consent ?? readConsentFromHeader(cookieHeader, options.cookieName, options.cookieVersion)
-  const formFields = await options.getCsrfFormFields?.(request) ?? {}
+  const formFields = await options.getCsrfFormFields?.(request, response) ?? {}
   const requestedLanguage = await options.getLanguage?.(request)
   const header = (request as { headers?: Record<string, unknown> } | undefined)?.headers?.['accept-language']
   const language = requestedLanguage === undefined

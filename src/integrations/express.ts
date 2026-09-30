@@ -104,7 +104,8 @@ export function registerExpress(
         encode: (value: string) => value
       })
 
-      res.redirect(303, result.redirectTo)
+      const redirectTo = safeInternalPath(result.redirectTo, '/')
+      res.redirect(303, redirectTo)
     }).catch(next)
   })
 
