@@ -67,6 +67,7 @@ export type { HotjarTagOptions } from './tags/hotjar.js'
 export { microsoftClarity } from './tags/microsoft-clarity.js'
 export type { MicrosoftClarityTagOptions } from './tags/microsoft-clarity.js'
 export type { ConsentTag, TagOptions } from './tags/types.js'
+export type { ConsentTagInput, ConsentTagPreset } from './tags/presets.js'
 export {
   parseConsentCookie,
   serialiseConsent,

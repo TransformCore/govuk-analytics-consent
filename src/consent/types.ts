@@ -1,6 +1,6 @@
 import type { LanguageCode, LocalizedMessages } from './messages.js'
 import type { ResolvedCspDirectives } from '../tags/csp.js'
-import type { ConsentTag } from '../tags/types.js'
+import type { ConsentTagInput } from '../tags/presets.js'
 import type { GtmAllowlistInput, GtmRestrictions } from '../gtm/restrictions.js'
 
 export interface ConsentState {
@@ -129,8 +129,8 @@ export interface GovUkAnalyticsConsentOptions {
   consentWaitForUpdate?: number | false
   /** Built-in category presets or custom category objects. Presets use the resolved messages. */
   categories?: CookieCategoryInput[]
-  /** Tags loaded through GTM; each adds its cookie rows and CSP sources. */
-  tags?: ConsentTag[]
+  /** Tags loaded through GTM, as preset names or tag objects; each adds its cookie rows and CSP sources. */
+  tags?: ConsentTagInput[]
   /**
    * GTM tag, trigger and variable type IDs or classes pushed as `gtm.allowlist`.
    * `'auto'` (alone or as an entry) expands to the GTM types of `tags` plus built-in triggers and variables.

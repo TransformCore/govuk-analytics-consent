@@ -104,8 +104,21 @@ describe('CSP directives', () => {
 })
 
 describe('tags', () => {
+  it('accepts preset names alongside tag objects', () => {
+    const resolved = resolveOptions({
+      tags: ['google-analytics', 'hotjar', microsoftClarity({ categoryId: 'analytics' })]
+    })
+
+    expect(resolved.cookies.map((cookie) => cookie.name)).toEqual(expect.arrayContaining(['_ga', '_hj*', '_clck']))
+    expect(resolved.csp['script-src']).toContain('https://*.hotjar.com')
+  })
+
+  it('rejects an unknown tag preset', () => {
+    expect(() => resolveOptions({ tags: ['matomo' as never] })).toThrow('Unknown tag preset: matomo')
+  })
+
   it('rejects duplicate tag ids', () => {
-    expect(() => resolveOptions({ tags: [googleAnalytics(), googleAnalytics()] })).toThrow(/Duplicate tag id/)
+    expect(() => resolveOptions({ tags: [googleAnalytics(), 'google-analytics'] })).toThrow(/Duplicate tag id/)
   })
 
   it('lets a user-supplied cookie override a tag cookie with the same name', () => {

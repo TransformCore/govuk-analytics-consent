@@ -33,7 +33,7 @@ GTM_CONTAINER_ID=GTM-XXXXXXX
 
 ```js
 import govukAnalyticsConsent from '@transform-uk/govuk-analytics-consent/hapi'
-import { googleAnalytics, govukAnalyticsConsentTemplatePath } from '@transform-uk/govuk-analytics-consent'
+import { govukAnalyticsConsentTemplatePath } from '@transform-uk/govuk-analytics-consent'
 
 // Add the package templates to your Nunjucks search paths.
 const searchPaths = [govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-frontend/dist', 'src/views']
@@ -42,7 +42,7 @@ await server.register({
   plugin: govukAnalyticsConsent,
   options: {
     serviceName: 'Apply for a licence',
-    tags: [googleAnalytics()]
+    tags: ['google-analytics']
   }
 })
 ```
@@ -51,7 +51,6 @@ await server.register({
 
 ```js
 import {
-  googleAnalytics,
   registerGovUkAnalyticsConsent,
   govukAnalyticsConsentTemplatePath
 } from '@transform-uk/govuk-analytics-consent'
@@ -62,7 +61,7 @@ nunjucks.configure([govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-fro
 
 registerGovUkAnalyticsConsent(app, {
   serviceName: 'Apply for a licence',
-  tags: [googleAnalytics()]
+  tags: ['google-analytics']
 })
 ```
 
@@ -77,13 +76,12 @@ npm install --save fastify fastify-plugin
 ```js
 import Fastify from 'fastify'
 import govukAnalyticsConsent from '@transform-uk/govuk-analytics-consent/fastify'
-import { googleAnalytics } from '@transform-uk/govuk-analytics-consent'
 
 const app = Fastify()
 
 await app.register(govukAnalyticsConsent, {
   serviceName: 'Apply for a licence',
-  tags: [googleAnalytics()]
+  tags: ['google-analytics']
 })
 
 app.get('/', (request, reply) => reply.view('index.njk', {
@@ -121,9 +119,9 @@ For Hapi services using [Blankie](https://github.com/nlf/blankie):
 ```js
 import Blankie from 'blankie'
 import consentPlugin from '@transform-uk/govuk-analytics-consent/hapi'
-import { createGovUkAnalyticsConsent, googleAnalytics } from '@transform-uk/govuk-analytics-consent'
+import { createGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
 
-const consent = createGovUkAnalyticsConsent({ tags: [googleAnalytics()] })
+const consent = createGovUkAnalyticsConsent({ tags: ['google-analytics'] })
 
 await server.register({
   plugin: Blankie,
@@ -150,10 +148,10 @@ For Fastify, register `@fastify/helmet` before the consent plugin; the adapter a
 import Fastify from 'fastify'
 import helmet from '@fastify/helmet'
 import consentPlugin from '@transform-uk/govuk-analytics-consent/fastify'
-import { createGovUkAnalyticsConsent, googleAnalytics } from '@transform-uk/govuk-analytics-consent'
+import { createGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
 
 const app = Fastify()
-const consent = createGovUkAnalyticsConsent({ tags: [googleAnalytics()] })
+const consent = createGovUkAnalyticsConsent({ tags: ['google-analytics'] })
 
 await app.register(helmet, {
   enableCSPNonces: true,
@@ -181,12 +179,11 @@ import crypto from 'node:crypto'
 import helmet from 'helmet'
 import {
   createGovUkAnalyticsConsent,
-  googleAnalytics,
   registerGovUkAnalyticsConsent
 } from '@transform-uk/govuk-analytics-consent'
 
 const consent = createGovUkAnalyticsConsent({
-  tags: [googleAnalytics()],
+  tags: ['google-analytics'],
   getNonce: (req) => req.res.locals.cspNonce
 })
 
@@ -324,7 +321,7 @@ All optional.
 | `serviceName` | `this service` | Used in the banner heading |
 | `messages` | English defaults | Partial message override set for banner, page copy, category labels, table headers and other user-facing strings |
 | `categories` | essential + analytics | Built-in preset names or custom category objects; presets use the resolved messages. Add `essential: true` for always-on custom categories and `gtagSignals` for the Consent Mode signals they control |
-| `tags` | none | [Tags](#tags) loaded through GTM, such as `googleAnalytics()`; each adds its cookie rows and CSP origins |
+| `tags` | none | [Tags](#tags) loaded through GTM, as preset names such as `'google-analytics'` or tag objects; each adds its cookie rows and CSP origins |
 | `gtmAllowlist` | none | GTM type IDs or classes pushed as `gtm.allowlist`, or `'auto'` to generate it from `tags`; see [restricting GTM](#restricting-what-gtm-can-run) |
 | `gtmBlocklist` | none | GTM type IDs or classes pushed as `gtm.blocklist`; takes precedence over the allowlist |
 | `cookies` | none | Cookie definitions or factories for the cookies page; factories receive the resolved `messages` object. Entries merge with (and can override by `name`) the built-in consent-cookie row and tag cookies. `match` and `removeOnReject` control [removal on rejection](#removing-cookies-on-rejection) |
@@ -536,23 +533,24 @@ no `tags`, only the GTM sources and the consent-cookie row are included.
 ```js
 import {
   createGovUkAnalyticsConsent,
-  googleAnalytics,
-  hotjar,
-  microsoftClarity
+  hotjar
 } from '@transform-uk/govuk-analytics-consent'
 
 const consent = createGovUkAnalyticsConsent({
-  tags: [googleAnalytics(), hotjar({ siteId: 1234567 }), microsoftClarity()]
+  tags: ['google-analytics', hotjar({ siteId: 1234567 }), 'microsoft-clarity']
 })
 ```
 
-| Preset | Options | Cookies | CSP origins |
-| --- | --- | --- | --- |
-| `googleAnalytics()` | `measurementId` (defaults to `GA_MEASUREMENT_ID`) | `_ga`, `_ga_<id>` | `*.google-analytics.com`, `*.analytics.google.com`, `www.google.com` |
-| `hotjar()` | `siteId` (defaults to `HOTJAR_SITE_ID`) | `_hjSessionUser_<id>`, `_hjSession_<id>`, other `_hj*` | `*.hotjar.com`, `*.hotjar.io`, `wss://*.hotjar.com` |
-| `microsoftClarity()` | none | `_clck`, `_clsk`, `CLID`, `MUID` | `*.clarity.ms`, `c.bing.com` |
+As with `categories`, each entry is either a preset name, which uses the preset's defaults, or a
+tag object. Call the preset function to pass options.
 
-Every preset also accepts `categoryId` (default `'analytics'`), which must match a configured
+| Preset name | Function | Options | Cookies | CSP origins |
+| --- | --- | --- | --- | --- |
+| `'google-analytics'` | `googleAnalytics()` | `measurementId` (defaults to `GA_MEASUREMENT_ID`) | `_ga`, `_ga_<id>` | `*.google-analytics.com`, `*.analytics.google.com`, `www.google.com` |
+| `'hotjar'` | `hotjar()` | `siteId` (defaults to `HOTJAR_SITE_ID`) | `_hjSessionUser_<id>`, `_hjSession_<id>`, other `_hj*` | `*.hotjar.com`, `*.hotjar.io`, `wss://*.hotjar.com` |
+| `'microsoft-clarity'` | `microsoftClarity()` | none | `_clck`, `_clsk`, `CLID`, `MUID` | `*.clarity.ms`, `c.bing.com` |
+
+Every preset function also accepts `categoryId` (default `'analytics'`), which must match a configured
 category. Without a measurement or site ID, the cookies page uses a generic `<id>` name; matching
 for removal uses wildcards either way. Cookie copy comes from the resolved messages, so it is
 localised and can be overridden.
@@ -582,7 +580,7 @@ const mixpanel = {
   }
 }
 
-const consent = createGovUkAnalyticsConsent({ tags: [googleAnalytics(), mixpanel] })
+const consent = createGovUkAnalyticsConsent({ tags: ['google-analytics', mixpanel] })
 ```
 
 `cookies` receives the resolved messages for the request language. Tag ids must be unique. An
@@ -597,7 +595,7 @@ variable type IDs (for example `hjtc`) or classes (for example `customScripts`):
 
 ```js
 createGovUkAnalyticsConsent({
-  tags: [googleAnalytics()],
+  tags: ['google-analytics'],
   gtmBlocklist: ['customScripts', 'nonGoogleIframes']
 })
 ```
@@ -610,7 +608,7 @@ the tag types you have declared:
 ```js
 createGovUkAnalyticsConsent({
   gtmAllowlist: 'auto',
-  tags: [googleAnalytics(), hotjar({ siteId: 1234567 })]
+  tags: ['google-analytics', hotjar({ siteId: 1234567 })]
 })
 ```
 
