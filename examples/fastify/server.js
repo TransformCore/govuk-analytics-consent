@@ -2,11 +2,8 @@ import fastify from 'fastify'
 import fastifyStatic from '@fastify/static'
 import nunjucks from 'nunjucks'
 import { resolve } from 'node:path'
-import {
-  gaCookies,
-  govukAnalyticsConsentFastifyPlugin,
-  govukAnalyticsConsentTemplatePath
-} from '../../dist/index.js'
+import { gaCookies, govukAnalyticsConsentTemplatePath } from '../../dist/index.js'
+import govukAnalyticsConsentFastifyPlugin from '../../dist/integrations/fastify.js'
 import { exampleLanguage, languageCookieName, languageReturnUrl, languageView } from '../language.js'
 
 const app = fastify({ logger: true })

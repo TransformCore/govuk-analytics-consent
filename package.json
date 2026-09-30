@@ -64,10 +64,14 @@
   },
   "peerDependencies": {
     "fastify": ">=5",
+    "fastify-plugin": ">=6",
     "govuk-frontend": ">=4.0.0"
   },
   "peerDependenciesMeta": {
     "fastify": {
+      "optional": true
+    },
+    "fastify-plugin": {
       "optional": true
     },
     "govuk-frontend": {
@@ -88,6 +92,7 @@
     "esbuild": "^0.28.2",
     "express": "^4.21.2",
     "fastify": "^5.12.5",
+    "fastify-plugin": "^6.0.0",
     "govuk-frontend": "^5.11.2",
     "jsdom": "^25.0.1",
     "nunjucks": "^3.2.4",
@@ -104,8 +109,5 @@
     "hapi",
     "express",
     "fastify"
-  ],
-  "dependencies": {
-    "fastify-plugin": "^6.0.0"
-  }
+  ]
 }

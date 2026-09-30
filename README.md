@@ -66,6 +66,12 @@ registerGovUkAnalyticsConsent(app, {
 
 ### Fastify
 
+Install the adapter's optional Fastify dependencies:
+
+```sh
+npm install --save fastify fastify-plugin
+```
+
 ```js
 import Fastify from 'fastify'
 import govukAnalyticsConsent from '@transform-uk/govuk-analytics-consent/fastify'
@@ -319,6 +325,74 @@ async.
 Register the CSRF middleware before `registerGovUkAnalyticsConsent` (or before registering the
 Hapi plugin), and make sure it protects `POST {routePrefix}/consent`. Do not shared-cache HTML
 containing request-specific tokens.
+
+### Rate limiting the consent endpoint
+
+Rate limiting complements CSRF protection but does not replace it. The package does not impose a
+limit because applications may already enforce one at a reverse proxy, API gateway, or shared
+middleware layer. The examples below allow 120 requests per client per minute. Adjust the path if
+you change `routePrefix`, and use a shared store or edge limit when running more than one process.
+
+#### Express
+
+Install [`express-rate-limit`](https://github.com/express-rate-limit/express-rate-limit), mount it
+on the consent path, then register the integration:
+
+```js
+import { rateLimit } from 'express-rate-limit'
+import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+
+app.use('/govuk-analytics-consent/consent', rateLimit({
+  windowMs: 60_000,
+  limit: 120,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false
+}))
+
+registerGovUkAnalyticsConsent(app)
+```
+
+#### Hapi
+
+Install [`hapi-rate-limit`](https://github.com/wraithgar/hapi-rate-limit) and register it before
+the consent plugin. Unauthenticated users are identified by their remote address:
+
+```js
+import rateLimit from 'hapi-rate-limit'
+import consentPlugin from '@transform-uk/govuk-analytics-consent/hapi'
+
+await server.register({
+  plugin: rateLimit,
+  options: {
+    userLimit: false,
+    pathLimit: false,
+    userPathLimit: 120
+  }
+})
+await server.register(consentPlugin)
+```
+
+The default `userPathCache.expiresIn` window is one minute. Configure `trustProxy` only when a
+trusted proxy strips incoming forwarding headers and supplies the client address itself.
+
+#### Fastify
+
+Install [`@fastify/rate-limit`](https://github.com/fastify/fastify-rate-limit) and register it
+before the consent plugin:
+
+```js
+import rateLimit from '@fastify/rate-limit'
+import consentPlugin from '@transform-uk/govuk-analytics-consent/fastify'
+
+await app.register(rateLimit, {
+  max: 120,
+  timeWindow: '1 minute'
+})
+await app.register(consentPlugin)
+```
+
+This applies the same per-client limit to routes registered after the limiter. Use its route
+configuration or a shared Redis store when the wider application needs a different policy.
 
 ### Hapi with Crumb
 
