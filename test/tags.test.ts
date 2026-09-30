@@ -19,6 +19,8 @@ import { buildRemovalCategories, findCookiesToRemove } from '../src/consent/remo
 import { createInitialState, withCategoryChoices } from '../src/consent/state.js'
 import govukAnalyticsConsentFastifyPlugin from '../src/integrations/fastify.js'
 import govukAnalyticsConsentHapiPlugin from '../src/integrations/hapi.js'
+import { renderConsentHead } from '../src/ui/html.js'
+import { buildViewModel } from '../src/ui/view-model.js'
 
 const originalHotjarSiteId = process.env.HOTJAR_SITE_ID
 
@@ -174,6 +176,38 @@ describe('tags', () => {
     expect(removal('_clck')).toBe('host-and-parents')
     expect(removal('MUID')).toBe('never')
     expect(removal('CLID')).toBe('never')
+  })
+})
+
+describe('automatic GTM allowlist', () => {
+  it('allowlists the GTM types of the configured tags', () => {
+    const resolved = resolveOptions({
+      gtmAllowlist: 'auto',
+      tags: [googleAnalytics(), hotjar(), microsoftClarity({ gtmTypes: ['sandboxedScripts'] })]
+    })
+
+    expect(resolved.gtmRestrictions.allowlist).toEqual(
+      expect.arrayContaining(['googtag', 'gaawc', 'gaawe', 'hjtc', 'sandboxedScripts'])
+    )
+    expect(resolved.gtmRestrictions.blocklist).toBeNull()
+  })
+
+  it('requires GTM types for Microsoft Clarity', () => {
+    expect(() => resolveOptions({ gtmAllowlist: 'auto', tags: [microsoftClarity()] })).toThrow(/gtmTypes/)
+  })
+
+  it('renders the restrictions in the head markup', () => {
+    const resolved = resolveOptions({
+      gtmContainerId: 'GTM-ABC123',
+      gtmAllowlist: 'auto',
+      gtmBlocklist: ['customScripts'],
+      tags: [hotjar()]
+    })
+    const head = renderConsentHead(buildViewModel(resolved))
+
+    expect(head).toContain('"gtm.allowlist":[')
+    expect(head).toContain('"hjtc"')
+    expect(head).toContain('"gtm.blocklist":["customScripts"]')
   })
 })
 

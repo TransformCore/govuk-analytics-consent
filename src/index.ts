@@ -81,6 +81,8 @@ export {
   hasChoice
 } from './consent/state.js'
 export { buildConsentDefault, buildConsentUpdate } from './gtm/consent-mode.js'
+export { gtmBaseAllowlist } from './gtm/restrictions.js'
+export type { GtmAllowlistInput, GtmRestrictions } from './gtm/restrictions.js'
 export { gtmCspDirectives, mergeCspDirectives, toBlankieCsp, toHelmetCsp } from './tags/csp.js'
 export type {
   BlankieCspOptions,

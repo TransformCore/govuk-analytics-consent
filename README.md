@@ -325,6 +325,8 @@ All optional.
 | `messages` | English defaults | Partial message override set for banner, page copy, category labels, table headers and other user-facing strings |
 | `categories` | essential + analytics | Built-in preset names or custom category objects; presets use the resolved messages. Add `essential: true` for always-on custom categories and `gtagSignals` for the Consent Mode signals they control |
 | `tags` | none | [Tags](#tags) loaded through GTM, such as `googleAnalytics()`; each adds its cookie rows and CSP origins |
+| `gtmAllowlist` | none | GTM type IDs or classes pushed as `gtm.allowlist`, or `'auto'` to generate it from `tags`; see [restricting GTM](#restricting-what-gtm-can-run) |
+| `gtmBlocklist` | none | GTM type IDs or classes pushed as `gtm.blocklist`; takes precedence over the allowlist |
 | `cookies` | none | Cookie definitions or factories for the cookies page; factories receive the resolved `messages` object. Entries merge with (and can override by `name`) the built-in consent-cookie row and tag cookies. `match` and `removeOnReject` control [removal on rejection](#removing-cookies-on-rejection) |
 | `includeDefaultCookies` | `true` | Set to `false` to omit the built-in consent-cookie row |
 | `secureCookie` | `NODE_ENV === 'production'` | |
@@ -585,6 +587,55 @@ const consent = createGovUkAnalyticsConsent({ tags: [googleAnalytics(), mixpanel
 
 `cookies` receives the resolved messages for the request language. Tag ids must be unique. An
 entry in `cookies` with the same `name` as a tag cookie overrides it.
+
+### Restricting what GTM can run
+
+Anyone with publish access to the GTM container can add tags to your service. To limit that, the
+head snippet can push GTM's [`gtm.allowlist` and `gtm.blocklist`](https://developers.google.com/tag-platform/tag-manager/restrict)
+after the consent defaults and before the container loads. Entries are GTM tag, trigger or
+variable type IDs (for example `hjtc`) or classes (for example `customScripts`):
+
+```js
+createGovUkAnalyticsConsent({
+  tags: [googleAnalytics()],
+  gtmBlocklist: ['customScripts', 'nonGoogleIframes']
+})
+```
+
+The blocklist takes precedence over the allowlist. An empty `gtmAllowlist` blocks every tag.
+
+Set `gtmAllowlist: 'auto'` to generate the allowlist from `tags`, so the container can run only
+the tag types you have declared:
+
+```js
+createGovUkAnalyticsConsent({
+  gtmAllowlist: 'auto',
+  tags: [googleAnalytics(), hotjar({ siteId: 1234567 })]
+})
+```
+
+The generated allowlist contains:
+
+- each tag's `gtmTypes`: `googtag`, `gaawc` and `gaawe` for `googleAnalytics()`, and `hjtc` for
+  `hotjar()`
+- `gtmBaseAllowlist`, the built-in trigger and variable types, so existing triggers keep
+  working. It excludes Custom JavaScript variables (`jsm`)
+
+To allow further types as well, use `'auto'` as one entry in the array, for example
+`gtmAllowlist: ['auto', 'awct']`. Custom HTML tags, Custom JavaScript variables and tag types you
+have not declared are blocked.
+
+Microsoft Clarity has no built-in GTM tag type, so `microsoftClarity()` declares no `gtmTypes`.
+Pass them explicitly when using `'auto'`; otherwise it is an error. Gallery templates run as
+`sandboxedScripts`, and allowlisting that class permits every custom template in the container:
+
+```js
+microsoftClarity({ gtmTypes: ['sandboxedScripts'] })
+```
+
+Custom tags declare their types the same way, with `gtmTypes: ['...']`. After enabling the
+allowlist, test the container in GTM Preview mode; tags whose types are not allowlisted are
+reported as blocked.
 
 ### Migrating from 0.2
 

@@ -19,6 +19,7 @@ export function googleAnalytics(options: GoogleAnalyticsTagOptions = {}): Consen
 
   return {
     id: 'google-analytics',
+    gtmTypes: options.gtmTypes ?? ['googtag', 'gaawc', 'gaawe'],
     cookies: (messages) => [
       {
         name: '_ga',

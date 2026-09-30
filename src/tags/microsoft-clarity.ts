@@ -7,6 +7,8 @@ export function microsoftClarity(options: MicrosoftClarityTagOptions = {}): Cons
 
   return {
     id: 'microsoft-clarity',
+    // Clarity has no built-in GTM tag type; its gallery template ID is container-specific.
+    gtmTypes: options.gtmTypes ?? [],
     cookies: (messages) => [
       {
         name: '_clck',

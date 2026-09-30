@@ -1,6 +1,7 @@
 import type { LanguageCode, LocalizedMessages } from './messages.js'
 import type { ResolvedCspDirectives } from '../tags/csp.js'
 import type { ConsentTag } from '../tags/types.js'
+import type { GtmAllowlistInput, GtmRestrictions } from '../gtm/restrictions.js'
 
 export interface ConsentState {
   version: number
@@ -130,6 +131,13 @@ export interface GovUkAnalyticsConsentOptions {
   categories?: CookieCategoryInput[]
   /** Tags loaded through GTM; each adds its cookie rows and CSP sources. */
   tags?: ConsentTag[]
+  /**
+   * GTM tag, trigger and variable type IDs or classes pushed as `gtm.allowlist`.
+   * `'auto'` (alone or as an entry) expands to the GTM types of `tags` plus built-in triggers and variables.
+   */
+  gtmAllowlist?: GtmAllowlistInput
+  /** GTM tag, trigger and variable type IDs or classes pushed as `gtm.blocklist`; overrides the allowlist. */
+  gtmBlocklist?: string[]
   /** Cookie definitions or factories called with the resolved messages; merges with built-in and tag cookies by `name`. */
   cookies?: CookieDefinitionInput[]
   /** Set to `false` to omit the built-in consent-cookie row. Defaults to `true`. */
@@ -179,6 +187,7 @@ export interface ResolvedOptions {
   cookie: ResolvedCookieOptions
   /** GTM sources merged with every tag's sources. */
   csp: ResolvedCspDirectives
+  gtmRestrictions: GtmRestrictions
   getNonce?: GovUkAnalyticsConsentOptions['getNonce']
   getCsrfFormFields?: GovUkAnalyticsConsentOptions['getCsrfFormFields']
   verifyCsrfFormSubmission?: GovUkAnalyticsConsentOptions['verifyCsrfFormSubmission']

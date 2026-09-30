@@ -3,6 +3,7 @@ import { defaultCookieDefinitions } from './default-cookies.js'
 import { globToPattern } from './removal.js'
 import { normaliseRoutePrefix, safeInternalPath } from '../shared/url.js'
 import { gtmCspDirectives, mergeCspDirectives } from '../tags/csp.js'
+import { resolveGtmRestrictions } from '../gtm/restrictions.js'
 import { resolveMessages, type LanguageCode } from './messages.js'
 import type {
   CookieDefinition,
@@ -114,6 +115,11 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
     getLanguage: options.getLanguage,
     localize: localizedDisplay,
     csp: mergeCspDirectives(gtmCspDirectives, ...tags.map((tag) => tag.csp)),
+    gtmRestrictions: resolveGtmRestrictions({
+      allowlist: options.gtmAllowlist,
+      blocklist: options.gtmBlocklist,
+      tags
+    }),
     getNonce: options.getNonce,
     getCsrfFormFields: options.getCsrfFormFields,
     verifyCsrfFormSubmission: options.verifyCsrfFormSubmission,

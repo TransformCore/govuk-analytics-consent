@@ -18,6 +18,7 @@ export function renderConsentHead(viewModel: ConsentViewModel): string {
   return headSnippet({
     categories: viewModel.categories,
     containerId: viewModel.gtmContainerId,
+    restrictions: viewModel.gtmRestrictions,
     waitForUpdate: viewModel.consentWaitForUpdate,
     nonce: viewModel.nonce
   })
