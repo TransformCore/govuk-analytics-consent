@@ -2,7 +2,7 @@ import Fastify from 'fastify'
 import nunjucks from 'nunjucks'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import govukAnalyticsConsentPlugin from '../src/integrations/fastify.js'
-import { gaCookies } from '../src/consent/default-cookies.js'
+import { googleAnalytics } from '../src/tags/google-analytics.js'
 import { govukAnalyticsConsentTemplatePath } from '../src/ui/template-path.js'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 
@@ -26,7 +26,7 @@ beforeEach(async () => {
 
   await server.register(govukAnalyticsConsentPlugin, {
     gtmContainerId: 'GTM-ABC123',
-    cookies: [gaCookies('G-ABC123')],
+    tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
     messages: {
       en: { acceptAll: 'Accept everything' },
       cy: { acceptAll: 'Derbyn popeth' }

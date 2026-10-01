@@ -1,6 +1,6 @@
 {
   "name": "@transform-uk/govuk-analytics-consent",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Near zero-configuration GOV.UK cookie consent banner, Google Tag Manager loading and Google Consent Mode integration for Node.js services",
   "license": "MIT",
   "type": "module",
@@ -93,7 +93,7 @@
     "express": "^4.21.2",
     "fastify": "^5.12.5",
     "fastify-plugin": "^6.0.0",
-    "govuk-frontend": "^5.11.2",
+    "govuk-frontend": "^6.5.1",
     "jsdom": "^25.0.1",
     "nunjucks": "^3.2.4",
     "supertest": "^7.0.0",

@@ -2,7 +2,11 @@ import fastify from 'fastify'
 import fastifyStatic from '@fastify/static'
 import nunjucks from 'nunjucks'
 import { resolve } from 'node:path'
-import { gaCookies, govukAnalyticsConsentTemplatePath } from '../../dist/index.js'
+import {
+  createGovUkAnalyticsConsent,
+  googleAnalytics,
+  govukAnalyticsConsentTemplatePath
+} from '../../dist/index.js'
 import govukAnalyticsConsentFastifyPlugin from '../../dist/integrations/fastify.js'
 import { exampleLanguage, languageCookieName, languageReturnUrl, languageView } from '../language.js'
 
@@ -19,12 +23,14 @@ await app.register(fastifyStatic, {
   prefix: '/govuk-frontend/'
 })
 
-await app.register(govukAnalyticsConsentFastifyPlugin, {
+// Reads GTM_CONTAINER_ID and GA_MEASUREMENT_ID from the environment; pass consent.helmetCsp(...) to @fastify/helmet if used.
+const consent = createGovUkAnalyticsConsent({
   serviceName: 'Example service',
   cookiesPageUrl: '/cookies',
   categories: ['default', 'personalization'],
+  tags: ['google-analytics'],
+  gtmAllowlist: ['auto'],
   cookies: [
-    gaCookies(),
     { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
     { name: languageCookieName, categoryId: 'essential', purpose: 'Remembers your language choice', expiry: '1 year' },
     {
@@ -36,6 +42,8 @@ await app.register(govukAnalyticsConsentFastifyPlugin, {
   ],
   getLanguage: (request) => exampleLanguage(request.headers.cookie)
 })
+
+await app.register(govukAnalyticsConsentFastifyPlugin, consent)
 
 app.get('/language/:language', (request, reply) => {
   const language = request.params.language

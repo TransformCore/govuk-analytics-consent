@@ -12,6 +12,8 @@ Source: https://github.com/TransformCore/govuk-analytics-consent
 - Consent Mode defaults to **denied** before GTM loads
 - Consent Mode updated the moment a user accepts or rejects
 - GTM loaded automatically from `GTM_CONTAINER_ID`
+- Tag presets (Google Analytics, Hotjar, Microsoft Clarity) that document their cookies, remove
+  them on rejection and supply their CSP sources
 
 ## Install
 
@@ -31,7 +33,7 @@ GTM_CONTAINER_ID=GTM-XXXXXXX
 
 ```js
 import govukAnalyticsConsent from '@transform-uk/govuk-analytics-consent/hapi'
-import { gaCookies, govukAnalyticsConsentTemplatePath } from '@transform-uk/govuk-analytics-consent'
+import { govukAnalyticsConsentTemplatePath } from '@transform-uk/govuk-analytics-consent'
 
 // Add the package templates to your Nunjucks search paths.
 const searchPaths = [govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-frontend/dist', 'src/views']
@@ -40,7 +42,7 @@ await server.register({
   plugin: govukAnalyticsConsent,
   options: {
     serviceName: 'Apply for a licence',
-    cookies: [gaCookies()]
+    tags: ['google-analytics']
   }
 })
 ```
@@ -49,7 +51,6 @@ await server.register({
 
 ```js
 import {
-  gaCookies,
   registerGovUkAnalyticsConsent,
   govukAnalyticsConsentTemplatePath
 } from '@transform-uk/govuk-analytics-consent'
@@ -60,7 +61,7 @@ nunjucks.configure([govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-fro
 
 registerGovUkAnalyticsConsent(app, {
   serviceName: 'Apply for a licence',
-  cookies: [gaCookies()]
+  tags: ['google-analytics']
 })
 ```
 
@@ -75,13 +76,12 @@ npm install --save fastify fastify-plugin
 ```js
 import Fastify from 'fastify'
 import govukAnalyticsConsent from '@transform-uk/govuk-analytics-consent/fastify'
-import { gaCookies } from '@transform-uk/govuk-analytics-consent'
 
 const app = Fastify()
 
 await app.register(govukAnalyticsConsent, {
   serviceName: 'Apply for a licence',
-  cookies: [gaCookies()]
+  tags: ['google-analytics']
 })
 
 app.get('/', (request, reply) => reply.view('index.njk', {
@@ -101,23 +101,31 @@ Fastify has a native plugin contract and can be registered with `app.register()`
 
 ### Content Security Policy
 
-The package exports `googleAnalyticsCspDirectives`, containing the additional origins required by
-its GTM and Google Analytics integration. Merge these into your service's existing policy; the
-package does not replace or mutate CSP headers because tags configured inside your GTM container
-may require further origins.
+CSP middleware is usually registered before this package, so create the consent configuration
+first with `createGovUkAnalyticsConsent(options)`. The returned object resolves the options once and
+exposes:
 
-For Hapi services using [Blankie](https://github.com/nlf/blankie),
-`withGoogleAnalyticsBlankieCsp` merges the additional sources into Blankie's options without
-mutating the original options or removing existing sources:
+- `csp`: the GTM sources merged with the sources of every configured [tag](#tags), keyed by
+  directive name (`script-src`, `connect-src`, `img-src`, `frame-src`, `style-src`, `font-src`)
+- `blankieCsp(options)` and `helmetCsp(directives)`: merge those sources into Blankie options or
+  Helmet directives without mutating the input or removing existing sources
+
+Pass the same object to the Hapi plugin, the Fastify plugin or `registerGovUkAnalyticsConsent`.
+The package does not replace or mutate CSP headers itself. Tags configured in GTM that are not
+declared through `tags` may need further origins.
+
+For Hapi services using [Blankie](https://github.com/nlf/blankie):
 
 ```js
 import Blankie from 'blankie'
 import consentPlugin from '@transform-uk/govuk-analytics-consent/hapi'
-import { withGoogleAnalyticsBlankieCsp } from '@transform-uk/govuk-analytics-consent'
+import { createGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+
+const consent = createGovUkAnalyticsConsent({ tags: ['google-analytics'] })
 
 await server.register({
   plugin: Blankie,
-  options: withGoogleAnalyticsBlankieCsp({
+  options: consent.blankieCsp({
     generateNonces: true,
     scriptSrc: ['self'],
     connectSrc: ['self'],
@@ -125,13 +133,13 @@ await server.register({
   })
 })
 
-await server.register({ plugin: consentPlugin })
+await server.register({ plugin: consentPlugin, options: consent })
 ```
 
 The Hapi plugin automatically uses `request.plugins.blankie.nonces.script`. An explicit `getNonce`
 option takes precedence if your service obtains its nonce another way.
 
-For Express or Fastify with Helmet, `withGoogleAnalyticsHelmetCsp` merges the extra sources into
+For Express or Fastify with Helmet, `consent.helmetCsp` merges the extra sources into
 Helmet's directives. Generate one nonce per response and share it with Helmet and this package.
 For Fastify, register `@fastify/helmet` before the consent plugin; the adapter automatically reads
 `reply.cspNonce.script` when Helmet's CSP nonce generation is enabled:
@@ -140,14 +148,15 @@ For Fastify, register `@fastify/helmet` before the consent plugin; the adapter a
 import Fastify from 'fastify'
 import helmet from '@fastify/helmet'
 import consentPlugin from '@transform-uk/govuk-analytics-consent/fastify'
-import { withGoogleAnalyticsHelmetCsp } from '@transform-uk/govuk-analytics-consent'
+import { createGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
 
 const app = Fastify()
+const consent = createGovUkAnalyticsConsent({ tags: ['google-analytics'] })
 
 await app.register(helmet, {
   enableCSPNonces: true,
   contentSecurityPolicy: {
-    directives: withGoogleAnalyticsHelmetCsp({
+    directives: consent.helmetCsp({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
       connectSrc: ["'self'"],
@@ -157,7 +166,7 @@ await app.register(helmet, {
   }
 })
 
-await app.register(consentPlugin)
+await app.register(consentPlugin, consent)
 ```
 
 To provide your own Fastify nonce source instead, set `getNonce: (request) => ...`. An explicit
@@ -169,9 +178,14 @@ For Express with Helmet, generate one nonce per response and share it with Helme
 import crypto from 'node:crypto'
 import helmet from 'helmet'
 import {
-  registerGovUkAnalyticsConsent,
-  withGoogleAnalyticsHelmetCsp
+  createGovUkAnalyticsConsent,
+  registerGovUkAnalyticsConsent
 } from '@transform-uk/govuk-analytics-consent'
+
+const consent = createGovUkAnalyticsConsent({
+  tags: ['google-analytics'],
+  getNonce: (req) => req.res.locals.cspNonce
+})
 
 app.use((req, res, next) => {
   res.locals.cspNonce = crypto.randomBytes(16).toString('base64')
@@ -179,17 +193,18 @@ app.use((req, res, next) => {
 })
 
 app.use(helmet.contentSecurityPolicy({
-  directives: withGoogleAnalyticsHelmetCsp({
+  directives: consent.helmetCsp({
     scriptSrc: ["'self'", (_req, res) => `'nonce-${res.locals.cspNonce}'`],
     connectSrc: ["'self'"],
     imgSrc: ["'self'"]
   })
 }))
 
-registerGovUkAnalyticsConsent(app, {
-  getNonce: (_req) => _req.res.locals.cspNonce
-})
+registerGovUkAnalyticsConsent(app, consent)
 ```
+
+For other CSP libraries, read `consent.csp` directly, or use the standalone `mergeCspDirectives`,
+`toBlankieCsp` and `toHelmetCsp` helpers with `gtmCspDirectives` and tag `csp` values.
 
 Nonce support avoids `'unsafe-inline'`. The generated GTM bootstrap also propagates the nonce to
 the remote script it creates, following Google's CSP guidance. Blankie users may still need the
@@ -306,7 +321,10 @@ All optional.
 | `serviceName` | `this service` | Used in the banner heading |
 | `messages` | English defaults | Partial message override set for banner, page copy, category labels, table headers and other user-facing strings |
 | `categories` | essential + analytics | Built-in preset names or custom category objects; presets use the resolved messages. Add `essential: true` for always-on custom categories and `gtagSignals` for the Consent Mode signals they control |
-| `cookies` | none | Cookie definitions or factories for the cookies page; factories receive the resolved `messages` object. Entries merge with (and can override by `name`) the built-in consent-cookie row. `match` and `removeOnReject` control [removal on rejection](#removing-cookies-on-rejection) |
+| `tags` | none | [Tags](#tags) loaded through GTM, as preset names such as `'google-analytics'` or tag objects; each adds its cookie rows and CSP origins |
+| `gtmAllowlist` | none | GTM type IDs or classes pushed as `gtm.allowlist`, or `'auto'` to generate it from `tags`; see [restricting GTM](#restricting-what-gtm-can-run) |
+| `gtmBlocklist` | none | GTM type IDs or classes pushed as `gtm.blocklist`; takes precedence over the allowlist |
+| `cookies` | none | Cookie definitions or factories for the cookies page; factories receive the resolved `messages` object. Entries merge with (and can override by `name`) the built-in consent-cookie row and tag cookies. `match` and `removeOnReject` control [removal on rejection](#removing-cookies-on-rejection) |
 | `includeDefaultCookies` | `true` | Set to `false` to omit the built-in consent-cookie row |
 | `secureCookie` | `NODE_ENV === 'production'` | |
 | `cookieMaxAge` | 1 year (seconds) | |
@@ -505,24 +523,126 @@ banner's native no-JavaScript form submission. The examples assume `sessionMiddl
 configured; with `csrf-csrf`, register `cookie-parser` after `express-session` when both are used.
 Keep the `csrf-csrf` secret in secure runtime configuration, not source control.
 
-## Google Analytics integration
+## Tags
 
-GTM loads from `GTM_CONTAINER_ID`. GA cookie rows are opt-in: add the exported `gaCookies()` helper
-to `cookies` to include both `_ga` and the GA4 cookie row. With no argument, the helper reads
-`GA_MEASUREMENT_ID`; pass a `G-...` measurement ID explicitly to override that environment value.
-If neither is set, the cookies page uses the generic `_ga_<id>` name. The helper uses the resolved
-message copy and keeps wildcard matching for cookie removal.
+GTM loads from `GTM_CONTAINER_ID`. Each tag you run through GTM can be declared in `tags`; a tag
+adds its cookie rows to the cookies page, removes those cookies when its category is rejected,
+and contributes its origins to [`consent.csp`](#content-security-policy). Tags are opt-in; with
+no `tags`, only the GTM sources and the consent-cookie row are included.
 
 ```js
-import { gaCookies, registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+import {
+  createGovUkAnalyticsConsent,
+  hotjar
+} from '@transform-uk/govuk-analytics-consent'
 
-registerGovUkAnalyticsConsent(app, { cookies: [gaCookies()] })
+const consent = createGovUkAnalyticsConsent({
+  tags: ['google-analytics', hotjar({ siteId: 1234567 }), 'microsoft-clarity']
+})
 ```
 
-The rows returned by `gaCookies()` use `'host-and-parents'`, because GA sets its cookies on the
-broadest domain it can (for example `.defra.gov.uk` rather than `payments.defra.gov.uk`). As a
-result, rejecting on one service also removes the GA cookies of other services on the same parent
-domain. Those services will then see them as a new user.
+As with `categories`, each entry is either a preset name, which uses the preset's defaults, or a
+tag object. Call the preset function to pass options.
+
+| Preset name | Function | Options | Cookies | CSP origins |
+| --- | --- | --- | --- | --- |
+| `'google-analytics'` | `googleAnalytics()` | `measurementId` (defaults to `GA_MEASUREMENT_ID`) | `_ga`, `_ga_<id>` | `*.google-analytics.com`, `*.analytics.google.com`, `www.google.com` |
+| `'hotjar'` | `hotjar()` | `siteId` (defaults to `HOTJAR_SITE_ID`) | `_hjSessionUser_<id>`, `_hjSession_<id>`, other `_hj*` | `*.hotjar.com`, `*.hotjar.io`, `wss://*.hotjar.com` |
+| `'microsoft-clarity'` | `microsoftClarity()` | none | `_clck`, `_clsk`, `CLID`, `MUID` | `*.clarity.ms`, `c.bing.com` |
+
+Every preset function also accepts `categoryId` (default `'analytics'`), which must match a configured
+category. Without a measurement or site ID, the cookies page uses a generic `<id>` name; matching
+for removal uses wildcards either way. Cookie copy comes from the resolved messages, so it is
+localised and can be overridden.
+
+First-party tag cookies use `'host-and-parents'` removal, because these tools set cookies on the
+broadest domain they can (for example `.defra.gov.uk` rather than `payments.defra.gov.uk`). As a
+result, rejecting on one service also removes those cookies for other services on the same parent
+domain, which will then see the user as new. Clarity's `CLID` and `MUID` are set on Microsoft's
+domains, so they are listed but never removed.
+
+Hotjar's documentation also recommends `style-src 'unsafe-inline'`. It is not included; add it
+yourself only if Hotjar's on-page widgets need it.
+
+### Custom tags
+
+A tag is a plain object, so adding another tool needs no changes to this package:
+
+```js
+const mixpanel = {
+  id: 'mixpanel',
+  cookies: () => [
+    { name: 'mp_<token>_mixpanel', match: 'mp_*_mixpanel', categoryId: 'analytics', purpose: 'Mixpanel analytics', expiry: '1 year' }
+  ],
+  csp: {
+    'script-src': ['https://cdn.mxpnl.com'],
+    'connect-src': ['https://api-js.mixpanel.com']
+  }
+}
+
+const consent = createGovUkAnalyticsConsent({ tags: ['google-analytics', mixpanel] })
+```
+
+`cookies` receives the resolved messages for the request language. Tag ids must be unique. An
+entry in `cookies` with the same `name` as a tag cookie overrides it.
+
+### Restricting what GTM can run
+
+Anyone with publish access to the GTM container can add tags to your service. To limit that, the
+head snippet can push GTM's [`gtm.allowlist` and `gtm.blocklist`](https://developers.google.com/tag-platform/tag-manager/restrict)
+after the consent defaults and before the container loads. Entries are GTM tag, trigger or
+variable type IDs (for example `hjtc`) or classes (for example `customScripts`):
+
+```js
+createGovUkAnalyticsConsent({
+  tags: ['google-analytics'],
+  gtmBlocklist: ['customScripts', 'nonGoogleIframes']
+})
+```
+
+The blocklist takes precedence over the allowlist. An empty `gtmAllowlist` blocks every tag.
+
+Set `gtmAllowlist: 'auto'` to generate the allowlist from `tags`, so the container can run only
+the tag types you have declared:
+
+```js
+createGovUkAnalyticsConsent({
+  gtmAllowlist: 'auto',
+  tags: ['google-analytics', hotjar({ siteId: 1234567 })]
+})
+```
+
+The generated allowlist contains:
+
+- each tag's `gtmTypes`: `googtag`, `gaawc` and `gaawe` for `googleAnalytics()`, and `hjtc` for
+  `hotjar()`
+- `gtmBaseAllowlist`, the built-in trigger and variable types, so existing triggers keep
+  working. It excludes Custom JavaScript variables (`jsm`)
+
+To allow further types as well, use `'auto'` as one entry in the array, for example
+`gtmAllowlist: ['auto', 'awct']`. Custom HTML tags, Custom JavaScript variables and tag types you
+have not declared are blocked.
+
+Microsoft Clarity has no built-in GTM tag type, so `microsoftClarity()` declares no `gtmTypes`.
+Pass them explicitly when using `'auto'`; otherwise it is an error. Gallery templates run as
+`sandboxedScripts`, and allowlisting that class permits every custom template in the container:
+
+```js
+microsoftClarity({ gtmTypes: ['sandboxedScripts'] })
+```
+
+Custom tags declare their types the same way, with `gtmTypes: ['...']`. After enabling the
+allowlist, test the container in GTM Preview mode; tags whose types are not allowlisted are
+reported as blocked.
+
+### Migrating from 0.2
+
+| 0.2 | 0.3 |
+| --- | --- |
+| `cookies: [gaCookies(id)]` | `tags: [googleAnalytics({ measurementId: id })]` |
+| `googleAnalyticsCspDirectives` | `consent.csp` |
+| `withGoogleAnalyticsBlankieCsp(options)` | `consent.blankieCsp(options)` |
+| `withGoogleAnalyticsHelmetCsp(directives)` | `consent.helmetCsp(directives)` |
 
 ### Additional Consent Mode categories
 
@@ -694,7 +814,7 @@ It lists every configured category with a table of its cookies and, under a "Cha
 settings" heading, a Yes/No radios group per non-essential category — matching the markup a real
 `govukRadios`/`govukButton` component call would produce (`cookies[{categoryId}]`, values `yes`/
 `no`). Sensible defaults mean most services need no extra config: the consent cookie itself and
-the standard GA cookies (once `gtmContainerId` is set) are documented automatically. Add entries
+the cookies of any configured [tags](#tags) are documented automatically. Add entries
 for your own cookies (a session cookie, for example) via `cookies`, and set `cookiesPageUrl` so
 the banner links to it:
 

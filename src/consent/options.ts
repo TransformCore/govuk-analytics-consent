@@ -2,6 +2,10 @@ import { buildCategoryPreset, buildDefaultCategories } from './categories.js'
 import { defaultCookieDefinitions } from './default-cookies.js'
 import { globToPattern } from './removal.js'
 import { normaliseRoutePrefix, safeInternalPath } from '../shared/url.js'
+import { gtmCspDirectives, mergeCspDirectives } from '../tags/csp.js'
+import { resolveTag } from '../tags/presets.js'
+import type { ConsentTag } from '../tags/types.js'
+import { resolveGtmRestrictions } from '../gtm/restrictions.js'
 import { resolveMessages, type LanguageCode } from './messages.js'
 import type {
   CookieDefinition,
@@ -48,6 +52,16 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
 
   const cookieMaxAge = options.cookieMaxAge ?? ONE_YEAR_SECONDS
   const resolvedGtmContainerId = gtmContainerId === '' ? null : gtmContainerId
+  const tags = (options.tags ?? []).map(resolveTag)
+  const tagIds = new Set<string>()
+
+  for (const tag of tags) {
+    if (tagIds.has(tag.id)) {
+      throw new Error(`Duplicate tag id: "${tag.id}"`)
+    }
+
+    tagIds.add(tag.id)
+  }
 
   const localize = (language: LanguageCode) => {
     const messages = resolveMessages(language, options.messages)
@@ -56,7 +70,7 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
       : options.categories.flatMap((category) =>
           typeof category === 'string' ? buildCategoryPreset(category, messages) : [category]
         )
-    const cookies = resolveCookieDefinitions(options, categories, { cookieName, cookieMaxAge, messages })
+    const cookies = resolveCookieDefinitions(options, tags, categories, { cookieName, cookieMaxAge, messages })
 
     return { messages, categories, cookies }
   }
@@ -102,6 +116,13 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
     messages,
     getLanguage: options.getLanguage,
     localize: localizedDisplay,
+    csp: mergeCspDirectives(gtmCspDirectives, ...tags.map((tag) => tag.csp)),
+    gtmRestrictions: resolveGtmRestrictions({
+      allowlist: options.gtmAllowlist,
+      blocklist: options.gtmBlocklist,
+      tags
+    }),
+    getNonce: options.getNonce,
     getCsrfFormFields: options.getCsrfFormFields,
     verifyCsrfFormSubmission: options.verifyCsrfFormSubmission,
     cookie: {
@@ -116,6 +137,7 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
 
 function resolveCookieDefinitions(
   options: GovUkAnalyticsConsentOptions,
+  tags: ConsentTag[],
   categories: ResolvedOptions['categories'],
   defaultsContext: {
     cookieName: string
@@ -126,6 +148,10 @@ function resolveCookieDefinitions(
   const includeDefaults = options.includeDefaultCookies ?? true
   const defaults = includeDefaults ? defaultCookieDefinitions(defaultsContext) : []
   const suppliedCookies: CookieDefinition[] = []
+
+  for (const tag of tags) {
+    suppliedCookies.push(...tag.cookies(defaultsContext.messages))
+  }
 
   for (const cookie of options.cookies ?? []) {
     suppliedCookies.push(

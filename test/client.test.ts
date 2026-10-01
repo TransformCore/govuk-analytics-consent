@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest'
-import { gaCookies } from '../src/consent/default-cookies.js'
+import { googleAnalytics } from '../src/tags/google-analytics.js'
 import { resolveOptions } from '../src/consent/options.js'
 import { createInitialState, withCategoryChoices } from '../src/consent/state.js'
 import { serialiseConsent } from '../src/consent/cookie.js'
@@ -12,7 +12,7 @@ import type { ConsentState } from '../src/consent/types.js'
 
 const options = resolveOptions({
   gtmContainerId: 'GTM-ABC123',
-  cookies: [gaCookies('G-ABC123')],
+  tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
   consentWaitForUpdate: 500
 })
 

@@ -8,11 +8,12 @@ import {
 } from './integrations/hapi.js'
 import type { ExpressAppLike } from './integrations/express.js'
 import type { HapiServerLike } from './integrations/hapi.js'
-import type { GovUkAnalyticsConsentOptions, ResolvedOptions } from './consent/types.js'
+import type { ResolvedOptions } from './consent/types.js'
+import type { GovUkAnalyticsConsentInput } from './consent/create.js'
 
 export function registerGovUkAnalyticsConsent(
   target: HapiServerLike | ExpressAppLike,
-  options: GovUkAnalyticsConsentOptions = {}
+  options: GovUkAnalyticsConsentInput = {}
 ): ResolvedOptions {
   if (isHapiServer(target)) {
     return registerHapi(target, options)
@@ -56,7 +57,17 @@ export {
 } from './consent/categories.js'
 export { defaultMessages, getDefaultMessages, resolveMessages } from './consent/messages.js'
 export type { ConsentMessages } from './consent/types.js'
-export { defaultCookieDefinitions, gaCookies } from './consent/default-cookies.js'
+export { defaultCookieDefinitions } from './consent/default-cookies.js'
+export { createGovUkAnalyticsConsent, isGovUkAnalyticsConsent } from './consent/create.js'
+export type { GovUkAnalyticsConsent, GovUkAnalyticsConsentInput } from './consent/create.js'
+export { googleAnalytics } from './tags/google-analytics.js'
+export type { GoogleAnalyticsTagOptions } from './tags/google-analytics.js'
+export { hotjar } from './tags/hotjar.js'
+export type { HotjarTagOptions } from './tags/hotjar.js'
+export { microsoftClarity } from './tags/microsoft-clarity.js'
+export type { MicrosoftClarityTagOptions } from './tags/microsoft-clarity.js'
+export type { ConsentTag, TagOptions } from './tags/types.js'
+export type { ConsentTagInput, ConsentTagPreset } from './tags/presets.js'
 export {
   parseConsentCookie,
   serialiseConsent,
@@ -71,8 +82,17 @@ export {
   hasChoice
 } from './consent/state.js'
 export { buildConsentDefault, buildConsentUpdate } from './gtm/consent-mode.js'
-export { googleAnalyticsCspDirectives, withGoogleAnalyticsBlankieCsp, withGoogleAnalyticsHelmetCsp } from './gtm/csp.js'
-export type { BlankieCspOptions, GoogleAnalyticsCspDirectives, HelmetCspDirectives, HelmetCspSource } from './gtm/csp.js'
+export { gtmBaseAllowlist } from './gtm/restrictions.js'
+export type { GtmAllowlistInput, GtmRestrictions } from './gtm/restrictions.js'
+export { gtmCspDirectives, mergeCspDirectives, toBlankieCsp, toHelmetCsp } from './tags/csp.js'
+export type {
+  BlankieCspOptions,
+  CspDirectiveName,
+  CspDirectives,
+  HelmetCspDirectives,
+  HelmetCspSource,
+  ResolvedCspDirectives
+} from './tags/csp.js'
 export {
   renderConsentHead,
   renderConsentNoscript,

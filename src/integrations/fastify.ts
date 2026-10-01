@@ -1,6 +1,6 @@
 import fastifyPlugin from 'fastify-plugin'
 import type { FastifyPluginAsync, FastifyReply } from 'fastify'
-import { resolveOptions } from '../consent/options.js'
+import { resolveInput, type GovUkAnalyticsConsentInput } from '../consent/create.js'
 import { clientAsset } from './client-asset.js'
 import {
   consentRoutePaths,
@@ -11,7 +11,7 @@ import {
 } from './core.js'
 import { readQueryParam, safeInternalPath } from '../shared/url.js'
 import type { ConsentContext, ConsentRequestState } from './core.js'
-import type { GovUkAnalyticsConsentOptions, ResolvedOptions } from '../consent/types.js'
+import type { ResolvedOptions } from '../consent/types.js'
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -20,9 +20,9 @@ declare module 'fastify' {
   }
 }
 
-export const govukAnalyticsConsentFastifyPlugin: FastifyPluginAsync<GovUkAnalyticsConsentOptions> =
+export const govukAnalyticsConsentFastifyPlugin: FastifyPluginAsync<GovUkAnalyticsConsentInput> =
   async (fastify, options) => {
-    const resolved = resolveOptions(options)
+    const resolved = resolveInput(options)
     const paths = consentRoutePaths(resolved)
 
     fastify.decorateRequest('govukAnalyticsConsent', null as unknown as ConsentRequestState)
@@ -55,9 +55,9 @@ export const govukAnalyticsConsentFastifyPlugin: FastifyPluginAsync<GovUkAnalyti
         currentPath,
         returnTo: returnUrl !== null ? safeInternalPath(returnUrl, currentPath) : undefined,
         cookiesSaved: readQueryParam(currentPath, 'cookies-updated') === 'true',
-        nonce: options.getNonce === undefined
+        nonce: resolved.getNonce === undefined
           ? (reply as FastifyReply & { cspNonce?: { script?: string } }).cspNonce?.script ?? null
-          : options.getNonce(request) ?? null
+          : resolved.getNonce(request) ?? null
       })
     })
 

@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildConsentDefault, buildConsentUpdate } from '../src/gtm/consent-mode.js'
-import { googleAnalyticsCspDirectives } from '../src/gtm/csp.js'
-import { withGoogleAnalyticsBlankieCsp, withGoogleAnalyticsHelmetCsp } from '../src/index.js'
 import { gtmLoaderSnippet, gtmNoscriptSnippet } from '../src/gtm/loader.js'
+import { gtmBaseAllowlist, resolveGtmRestrictions } from '../src/gtm/restrictions.js'
 import { consentDefaultSnippet, headSnippet } from '../src/gtm/snippets.js'
 import {
   advertisingCategory,
@@ -123,99 +122,6 @@ describe('gtmLoaderSnippet', () => {
   })
 })
 
-describe('googleAnalyticsCspDirectives', () => {
-  it('lists the additional sources required by GTM and Google Analytics', () => {
-    expect(googleAnalyticsCspDirectives).toEqual({
-      'script-src': ['https://www.googletagmanager.com'],
-      'connect-src': [
-        'https://www.googletagmanager.com',
-        'https://*.google-analytics.com',
-        'https://*.analytics.google.com',
-        'https://www.google.com'
-      ],
-      'img-src': [
-        'https://www.googletagmanager.com',
-        'https://*.google-analytics.com'
-      ],
-      'frame-src': ['https://www.googletagmanager.com']
-    })
-  })
-})
-
-describe('withGoogleAnalyticsBlankieCsp', () => {
-  it('adds the sources when no Blankie directives are configured', () => {
-    expect(withGoogleAnalyticsBlankieCsp({ generateNonces: true })).toEqual({
-      generateNonces: true,
-      scriptSrc: googleAnalyticsCspDirectives['script-src'],
-      connectSrc: googleAnalyticsCspDirectives['connect-src'],
-      imgSrc: googleAnalyticsCspDirectives['img-src'],
-      frameSrc: googleAnalyticsCspDirectives['frame-src']
-    })
-  })
-
-  it('merges the additional sources into Blankie options without changing the originals', () => {
-    const options = {
-      generateNonces: true,
-      scriptSrc: ['self', 'https://www.googletagmanager.com'],
-      connectSrc: ['self'],
-      imgSrc: ['self'],
-      frameSrc: ['self']
-    }
-
-    const merged = withGoogleAnalyticsBlankieCsp(options)
-
-    expect(merged).toEqual({
-      generateNonces: true,
-      scriptSrc: ['self', 'https://www.googletagmanager.com'],
-      connectSrc: ['self', ...googleAnalyticsCspDirectives['connect-src']],
-      imgSrc: ['self', ...googleAnalyticsCspDirectives['img-src']],
-      frameSrc: ['self', ...googleAnalyticsCspDirectives['frame-src']]
-    })
-    expect(options).toEqual({
-      generateNonces: true,
-      scriptSrc: ['self', 'https://www.googletagmanager.com'],
-      connectSrc: ['self'],
-      imgSrc: ['self'],
-      frameSrc: ['self']
-    })
-  })
-})
-
-describe('withGoogleAnalyticsHelmetCsp', () => {
-  it('adds the sources to an empty Helmet directives object', () => {
-    expect(withGoogleAnalyticsHelmetCsp({})).toEqual({
-      scriptSrc: googleAnalyticsCspDirectives['script-src'],
-      connectSrc: googleAnalyticsCspDirectives['connect-src'],
-      imgSrc: googleAnalyticsCspDirectives['img-src'],
-      frameSrc: googleAnalyticsCspDirectives['frame-src']
-    })
-  })
-
-  it('merges sources into Helmet directives without losing a nonce callback or changing the input', () => {
-    const nonce = (_request: unknown, response: { locals: { cspNonce: string } }) =>
-      `'nonce-${response.locals.cspNonce}'`
-    const directives = {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", nonce, 'https://www.googletagmanager.com'],
-      connectSrc: ["'self'"],
-      imgSrc: ["'self'"]
-    }
-
-    const merged = withGoogleAnalyticsHelmetCsp(directives)
-
-    expect(merged).toEqual({
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", nonce, 'https://www.googletagmanager.com'],
-      connectSrc: ["'self'", ...googleAnalyticsCspDirectives['connect-src']],
-      imgSrc: ["'self'", ...googleAnalyticsCspDirectives['img-src']],
-      frameSrc: googleAnalyticsCspDirectives['frame-src']
-    })
-    expect(merged.scriptSrc[1]).toBe(nonce)
-    expect(directives.scriptSrc).toEqual(["'self'", nonce, 'https://www.googletagmanager.com'])
-    expect(directives).not.toHaveProperty('frameSrc')
-  })
-})
-
 describe('headSnippet', () => {
   const snippet = headSnippet({ categories, containerId: 'GTM-ABC123', waitForUpdate: 500 })
 
@@ -244,5 +150,73 @@ describe('headSnippet', () => {
 
     expect(withoutGtm).toContain("gtag('consent','default'")
     expect(withoutGtm).not.toContain('googletagmanager.com')
+  })
+
+  it('pushes GTM restrictions after the consent default and before loading GTM', () => {
+    const restricted = headSnippet({
+      categories,
+      containerId: 'GTM-ABC123',
+      restrictions: { allowlist: ['hjtc'], blocklist: ['customScripts'] },
+      waitForUpdate: null
+    })
+    const push = 'dataLayer.push({"gtm.allowlist":["hjtc"],"gtm.blocklist":["customScripts"]});'
+
+    expect(restricted).toContain(push)
+    expect(restricted.indexOf("gtag('consent','default'")).toBeLessThan(restricted.indexOf(push))
+    expect(restricted.indexOf(push)).toBeLessThan(restricted.indexOf('googletagmanager.com/gtm.js'))
+  })
+
+  it('omits the restrictions push when neither list is set', () => {
+    expect(snippet).not.toContain('gtm.allowlist')
+    expect(snippet).not.toContain('gtm.blocklist')
+  })
+})
+
+describe('resolveGtmRestrictions', () => {
+  it('passes through explicit lists, removing duplicates', () => {
+    expect(resolveGtmRestrictions({ allowlist: ['google', 'google'], blocklist: ['html'], tags: [] })).toEqual({
+      allowlist: ['google'],
+      blocklist: ['html']
+    })
+    expect(resolveGtmRestrictions({ tags: [] })).toEqual({ allowlist: null, blocklist: null })
+  })
+
+  it('keeps an explicitly empty allowlist so every tag is blocked', () => {
+    expect(resolveGtmRestrictions({ allowlist: [], tags: [] }).allowlist).toEqual([])
+  })
+
+  it('expands auto to the configured tags plus built-in triggers and variables', () => {
+    const { allowlist } = resolveGtmRestrictions({
+      allowlist: 'auto',
+      tags: [{ id: 'hotjar', gtmTypes: ['hjtc'] }]
+    })
+
+    expect(allowlist).toEqual([...gtmBaseAllowlist, 'hjtc'])
+    expect(allowlist).not.toContain('jsm')
+    expect(allowlist).not.toContain('html')
+    expect(allowlist).not.toContain('auto')
+  })
+
+  it('adds extra entries alongside auto', () => {
+    const { allowlist } = resolveGtmRestrictions({
+      allowlist: ['auto', 'awct'],
+      tags: [{ id: 'hotjar', gtmTypes: ['hjtc'] }]
+    })
+
+    expect(allowlist).toEqual([...gtmBaseAllowlist, 'hjtc', 'awct'])
+  })
+
+  it('rejects a tag without GTM types when auto is used', () => {
+    expect(() => resolveGtmRestrictions({ allowlist: 'auto', tags: [{ id: 'microsoft-clarity' }] }))
+      .toThrow(/Tag "microsoft-clarity" declares no GTM type IDs/)
+  })
+
+  it('does not require GTM types when the allowlist is explicit', () => {
+    expect(resolveGtmRestrictions({ allowlist: ['google'], tags: [{ id: 'microsoft-clarity' }] }).allowlist)
+      .toEqual(['google'])
+  })
+
+  it.each(['bad id', '"];alert(1);//', ''])('rejects the malformed type ID %j', (id) => {
+    expect(() => resolveGtmRestrictions({ blocklist: [id], tags: [] })).toThrow(/Invalid gtmBlocklist entry/)
   })
 })

@@ -1,4 +1,7 @@
 import type { LanguageCode, LocalizedMessages } from './messages.js'
+import type { ResolvedCspDirectives } from '../tags/csp.js'
+import type { ConsentTagInput } from '../tags/presets.js'
+import type { GtmAllowlistInput, GtmRestrictions } from '../gtm/restrictions.js'
 
 export interface ConsentState {
   version: number
@@ -91,6 +94,20 @@ export interface ConsentMessages {
   gaSessionCookiePurpose: string
   gaCookieProvider: string
   gaCookieExpiry: string
+  hotjarSessionUserCookiePurpose: string
+  hotjarSessionCookiePurpose: string
+  hotjarCookiePurpose: string
+  hotjarCookieProvider: string
+  hotjarSessionUserCookieExpiry: string
+  hotjarSessionCookieExpiry: string
+  hotjarCookieExpiry: string
+  clarityUserCookiePurpose: string
+  claritySessionCookiePurpose: string
+  clarityClidCookiePurpose: string
+  clarityMuidCookiePurpose: string
+  clarityCookieProvider: string
+  clarityUserCookieExpiry: string
+  claritySessionCookieExpiry: string
   tableHeaderName: string
   tableHeaderPurpose: string
   tableHeaderExpiry: string
@@ -112,7 +129,16 @@ export interface GovUkAnalyticsConsentOptions {
   consentWaitForUpdate?: number | false
   /** Built-in category presets or custom category objects. Presets use the resolved messages. */
   categories?: CookieCategoryInput[]
-  /** Cookie definitions or factories called with the resolved messages; merges with built-in cookies by `name`. */
+  /** Tags loaded through GTM, as preset names or tag objects; each adds its cookie rows and CSP sources. */
+  tags?: ConsentTagInput[]
+  /**
+   * GTM tag, trigger and variable type IDs or classes pushed as `gtm.allowlist`.
+   * `'auto'` (alone or as an entry) expands to the GTM types of `tags` plus built-in triggers and variables.
+   */
+  gtmAllowlist?: GtmAllowlistInput
+  /** GTM tag, trigger and variable type IDs or classes pushed as `gtm.blocklist`; overrides the allowlist. */
+  gtmBlocklist?: string[]
+  /** Cookie definitions or factories called with the resolved messages; merges with built-in and tag cookies by `name`. */
   cookies?: CookieDefinitionInput[]
   /** Set to `false` to omit the built-in consent-cookie row. Defaults to `true`. */
   includeDefaultCookies?: boolean
@@ -159,6 +185,10 @@ export interface ResolvedOptions {
   getLanguage?: GovUkAnalyticsConsentOptions['getLanguage']
   localize: (language: LanguageCode) => Pick<ResolvedOptions, 'messages' | 'categories' | 'cookies'>
   cookie: ResolvedCookieOptions
+  /** GTM sources merged with every tag's sources. */
+  csp: ResolvedCspDirectives
+  gtmRestrictions: GtmRestrictions
+  getNonce?: GovUkAnalyticsConsentOptions['getNonce']
   getCsrfFormFields?: GovUkAnalyticsConsentOptions['getCsrfFormFields']
   verifyCsrfFormSubmission?: GovUkAnalyticsConsentOptions['verifyCsrfFormSubmission']
 }

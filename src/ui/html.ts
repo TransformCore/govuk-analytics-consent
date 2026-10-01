@@ -18,6 +18,7 @@ export function renderConsentHead(viewModel: ConsentViewModel): string {
   return headSnippet({
     categories: viewModel.categories,
     containerId: viewModel.gtmContainerId,
+    restrictions: viewModel.gtmRestrictions,
     waitForUpdate: viewModel.consentWaitForUpdate,
     nonce: viewModel.nonce
   })
@@ -46,7 +47,7 @@ export function renderConsentScripts(viewModel: ConsentViewModel): string {
     'defer',
     `data-module="${CLIENT_SCRIPT_MODULE}"`,
     `data-cookie-name="${safeHtmlAttribute(viewModel.cookieName)}"`,
-    `data-cookie-version="${viewModel.cookieVersion}"`,
+    `data-cookie-version="${safeHtmlAttribute(String(viewModel.cookieVersion))}"`,
     `data-route-prefix="${safeHtmlAttribute(viewModel.routePrefix)}"`,
     `data-categories="${safeHtmlAttribute(safeCategoriesJson)}"`
   ].join(' ')
@@ -168,8 +169,12 @@ export function renderConsentCookiesPage(viewModel: ConsentViewModel): string {
 function renderHiddenFields(fields: Record<string, string>): string[] {
   return Object.entries(fields).map(
     ([name, value]) =>
-      `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`
+      `<input type="hidden" ${renderHtmlAttribute('name', name)} ${renderHtmlAttribute('value', value)}>`
   )
+}
+
+function renderHtmlAttribute(name: string, value: string): string {
+  return `${name}="${escapeHtml(value)}"`
 }
 
 /** Matches the markup a real `govukNotificationBanner({ type: "success" })` call would produce. */
@@ -260,8 +265,8 @@ function renderCategoryRadios(
   consent: ConsentState,
   messages: ConsentViewModel['messages']
 ): string {
-  const idPrefix = `cookies-${category.id}`
-  const name = `cookies[${category.id}]`
+  const idPrefix = safeHtmlAttribute(`cookies-${category.id}`)
+  const name = safeHtmlAttribute(`cookies[${category.id}]`)
   const label = category.shortName ?? category.title
   const accepted = hasChoice(consent) && isCategoryAccepted(consent, category)
   const legend = escapeHtml(formatMessage(messages.categoryQuestion, { label }))
