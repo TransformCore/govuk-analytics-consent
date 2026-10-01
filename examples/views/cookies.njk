@@ -4,7 +4,7 @@
 
 {% set assetPath = "/govuk-frontend/assets" %}
 
-{% block pageTitle %}{{ govukAnalyticsConsent.messages.cookiesPageTitle }} - Example service{% endblock %}
+{% block pageTitle %}{{ govukAnalyticsConsent.messages.cookies.title }} - Example service{% endblock %}
 
 {% block head %}
   {{ super() }}
@@ -21,7 +21,7 @@
       items: [
         {
           href: "/cookies",
-          text: govukAnalyticsConsent.messages.cookiesPageTitle
+          text: govukAnalyticsConsent.messages.cookies.title
         },
         {
           href: languageSwitch.href,

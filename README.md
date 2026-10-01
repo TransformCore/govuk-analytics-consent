@@ -679,41 +679,10 @@ with their category in GTM so each preference actually controls whether those ta
 
 ## Localised copy
 
-Built-in English and Welsh messages are selected for each request from the browser's `Accept-Language` header. Regional codes such as `cy-GB` are supported; missing or unsupported preferences fall back to English. The same language is used for the banner, cookies page, category presets, and built-in cookie descriptions:
-
-```js
-import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
-
-registerGovUkAnalyticsConsent(server, {
-  serviceName: 'Example service',
-  categories: ['default', 'personalization']
-})
-```
-
-If your service selects a language through its own route or session, use `getLanguage` to take priority over the browser preference. Returning `undefined` uses `Accept-Language` instead:
-
-```js
-registerGovUkAnalyticsConsent(server, {
-  getLanguage: (request) => request.params.language
-})
-```
-
-Use `messages` to override individual strings for each language. Overrides for one language do not affect the other, and unspecified strings retain their built-in translations:
-
-```js
-registerGovUkAnalyticsConsent(server, {
-  messages: {
-    en: { acceptAll: 'Accept cookies' },
-    cy: { acceptAll: 'Derbyn cwcis', analyticsCategoryTitle: 'Cwcis dadansoddi' }
-  }
-})
-```
-
-An unsupported language falls back to English, including any `messages.en` overrides. Cookie factories receive the selected, overridden messages. For a fixed Welsh service, use `getLanguage: () => 'cy'`; `getDefaultMessages('cy')` is available when a complete message object is needed outside the registration options.
-
-If upgrading from an earlier version, move flat `messages` overrides under their language code. For HTML cached outside the library, vary the cache on `Accept-Language` (or your service's selected language) so one user's localized page is not served to another.
-
-The full message structure is available as `ConsentMessages`, and it supports banner text, cookies-page text, category titles/descriptions, table headings, radio labels, and notification copy.
+Built-in English and Welsh copy works without an i18n library. Use `getLanguage` to select a
+service language, `messages` for nested overrides, or a request-bound `translate` callback to use
+your host project's i18n catalogue. See the [localisation guide](docs/localisation.md) for
+configuration, fallback behaviour, and custom tag and cookie messages.
 
 ## How it works
 

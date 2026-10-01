@@ -20,8 +20,13 @@ beforeEach(() => {
     gtmContainerId: 'GTM-ABC123',
     tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
     messages: {
-      en: { acceptAll: 'Accept everything' },
-      cy: { acceptAll: 'Derbyn popeth' }
+      en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept everything' } } },
+      cy: { 'govuk-analytics-consent': { banner: { acceptAll: 'Derbyn popeth' } } }
+    },
+    translate: (key, { request, response }) => {
+      if (key !== 'govuk-analytics-consent.banner.acceptAll') return undefined
+      return (response as express.Response).locals !== undefined
+        ? (request as express.Request).header('x-consent-copy') : undefined
     }
   })
 
@@ -39,6 +44,14 @@ beforeEach(() => {
 })
 
 describe('express integration', () => {
+  it('uses the current request and response for host translation', async () => {
+    const translated = await request(app).get('/start').set('x-consent-copy', 'From Express')
+    const ordinary = await request(app).get('/start')
+
+    expect(translated.text).toContain('From Express')
+    expect(ordinary.text).toContain('Accept everything')
+  })
+
   it('renders each request in its preferred language with its own overrides', async () => {
     const english = await request(app).get('/start').set('accept-language', 'en-GB')
     const welsh = await request(app).get('/start').set('accept-language', 'cy-GB, en;q=0.5')

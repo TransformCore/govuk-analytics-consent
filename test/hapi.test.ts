@@ -50,9 +50,14 @@ beforeEach(async () => {
       gtmContainerId: 'GTM-ABC123',
       tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
       messages: {
-        en: { acceptAll: 'Accept everything' },
-        cy: { acceptAll: 'Derbyn popeth' }
+        en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept everything' } } },
+        cy: { 'govuk-analytics-consent': { banner: { acceptAll: 'Derbyn popeth' } } }
       },
+      translate: (key, { request, response }) =>
+        key === 'govuk-analytics-consent.banner.acceptAll' &&
+        (response as { variety?: string } | undefined)?.variety === 'view'
+          ? (request as Hapi.Request).headers['x-consent-copy'] as string | undefined
+          : undefined,
       getCsrfFormFields: async () => ({ csrfToken: 'hapi-token' })
     }
   })
@@ -80,6 +85,14 @@ afterEach(async () => {
 })
 
 describe('hapi integration', () => {
+  it('uses the current request and view response for host translation', async () => {
+    const translated = await server.inject({ url: '/start', headers: { 'x-consent-copy': 'From Hapi' } })
+    const ordinary = await server.inject('/start')
+
+    expect(translated.result).toContain('From Hapi')
+    expect(ordinary.result).toContain('Accept everything')
+  })
+
   it('renders each request in its preferred language with its own overrides', async () => {
     const english = await server.inject({ url: '/start', headers: { 'accept-language': 'en' } })
     const welsh = await server.inject({ url: '/start', headers: { 'accept-language': 'cy-GB' } })

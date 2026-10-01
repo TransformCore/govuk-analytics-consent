@@ -14,12 +14,12 @@ export function defaultCookieDefinitions({
   cookieMaxAge,
   messages
 }: DefaultCookieContext): CookieDefinition[] {
-  const resolvedMessages = { ...defaultMessages.en, ...messages }
+  const resolvedMessages = messages ?? defaultMessages.en
   const cookies: CookieDefinition[] = [
     {
       name: cookieName,
       categoryId: 'essential',
-      purpose: resolvedMessages.defaultCookiePurpose,
+      purpose: resolvedMessages.cookies?.consent.purpose ?? defaultMessages.en.cookies.consent.purpose,
       expiry: formatDuration(cookieMaxAge)
     }
   ]

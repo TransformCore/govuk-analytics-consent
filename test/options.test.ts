@@ -4,6 +4,7 @@ import { googleAnalytics } from '../src/tags/google-analytics.js'
 import { defaultMessages, getDefaultMessages, negotiateLanguage, resolveMessages, selectLanguage } from '../src/consent/messages.js'
 import { createConsentContext } from '../src/integrations/core.js'
 import { safeInternalPath, normaliseRoutePrefix } from '../src/shared/url.js'
+import type { ConsentMessages, TranslateMessage } from '../src/consent/types.js'
 
 const originalContainerId = process.env.GTM_CONTAINER_ID
 const originalGaMeasurementId = process.env.GA_MEASUREMENT_ID
@@ -29,19 +30,105 @@ afterEach(() => {
 })
 
 describe('resolveOptions', () => {
+  it('uses the request translator for built-in and custom cookie copy with literal fallback', async () => {
+    const options = resolveOptions({
+      tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
+      cookies: [
+        { name: 'custom_id', categoryId: 'analytics', purpose: 'Default purpose', purposeKey: 'govuk-analytics-consent.cookies.custom.purpose', expiry: '1 day', expiryKey: 'govuk-analytics-consent.cookies.custom.expiry', provider: 'Example provider', providerKey: 'govuk-analytics-consent.cookies.custom.provider' },
+        (_messages, translate) => [{ name: 'factory_id', categoryId: 'analytics', purpose: translate('govuk-analytics-consent.cookies.factory.purpose', 'Factory fallback'), expiry: 'Session' }]
+      ],
+      translate: (key, { request, response, values }) => {
+        expect(response).toBe((request as { reply: unknown }).reply)
+        if (key === 'govuk-analytics-consent.banner.title') return `Cookies: ${values?.serviceName ?? '{{serviceName}}'}`
+        if (key === 'govuk-analytics-consent.cookies.categoryQuestion') return 'Accept {{label}} <cookies>?'
+        if (key === 'govuk-analytics-consent.tags.google-analytics.description') return 'Description from host'
+        return (request as { copy: Record<string, string> }).copy[key]
+      }
+    })
+    const french = { reply: {}, headers: { 'accept-language': 'fr' }, copy: {
+      'govuk-analytics-consent.cookies.custom.purpose': 'But en francais',
+      'govuk-analytics-consent.cookies.factory.purpose': 'Fabrique'
+    } }
+    const welsh = { reply: {}, headers: { 'accept-language': 'cy' }, copy: {} }
+    const [frContext, cyContext] = await Promise.all([
+      createConsentContext(options, { request: french, response: french.reply }),
+      createConsentContext(options, { request: welsh, response: welsh.reply })
+    ])
+
+    expect(frContext.banner).toContain('Cookies: this service')
+    expect(frContext.cookiesPage).toContain('Accept analytics &lt;cookies&gt;?')
+    expect(frContext.cookiesPage).not.toContain('Accept analytics <cookies>?')
+    expect(frContext.cookies.find((cookie) => cookie.name === 'custom_id')?.purpose).toBe('But en francais')
+    expect(frContext.cookies.find((cookie) => cookie.name === 'factory_id')?.purpose).toBe('Fabrique')
+    expect(frContext.tagDescriptions[0]?.text).toBe('Description from host')
+    expect(frContext.messages.banner.rejectAll).toBe(defaultMessages.en.banner.rejectAll)
+    expect(cyContext.cookies.find((cookie) => cookie.name === 'custom_id')?.purpose).toBe('Default purpose')
+    expect(cyContext.cookies.find((cookie) => cookie.name === 'custom_id')?.provider).toBe('Example provider')
+    expect(cyContext.cookies.find((cookie) => cookie.name === 'factory_id')?.purpose).toBe('Factory fallback')
+    expect(cyContext.messages.banner.rejectAll).toBe(defaultMessages.cy.banner.rejectAll)
+    expect(options.cookies.find((cookie) => cookie.name === 'custom_id')?.purpose).toBe('Default purpose')
+  })
+
+  it('uses nested messages without a host library and only warns about unusable language catalogs', async () => {
+    const warnings: string[] = []
+    const options = resolveOptions({
+      logger: { warn: (message) => warnings.push(message) },
+      messages: { en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept here' } } }, fr: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accepter' } } } },
+      cookies: [{ name: 'custom_id', categoryId: 'analytics', purpose: 'Purpose', purposeKey: 'govuk-analytics-consent.cookies.custom.purpose', expiry: 'Session' }]
+    })
+    const context = await createConsentContext(options, { request: { headers: { 'accept-language': 'fr' } } })
+
+    expect(context.messages.banner.acceptAll).toBe('Accept here')
+    expect(context.cookies.find((cookie) => cookie.name === 'custom_id')?.purpose).toBe('Purpose')
+    expect(warnings).toEqual([expect.stringContaining('"fr"')])
+    expect(resolveMessages('cy', {
+      en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept here' } } }
+    }).banner.acceptAll).toBe(defaultMessages.cy.banner.acceptAll)
+  })
+
+  it('scopes custom tag translation keys to its definition id', async () => {
+    const keys: string[] = []
+    const options = resolveOptions({
+      tags: [{
+        id: 'my-tag',
+        csp: {},
+        description: (_messages: ConsentMessages, translate: TranslateMessage) => translate('description', 'Tag fallback'),
+        cookies: (_messages: ConsentMessages, translate: TranslateMessage) => [{
+          name: 'my_tag', categoryId: 'analytics',
+          purpose: translate('cookies.my_tag.purpose', 'Purpose fallback'), expiry: 'Session'
+        }]
+      }],
+      translate: (key) => {
+        if (key.startsWith('govuk-analytics-consent.tags.my-tag.')) keys.push(key)
+        return key.endsWith('.description') ? 'Translated tag' : undefined
+      }
+    })
+    const context = await createConsentContext(options, { request: { headers: { 'accept-language': 'en' } } })
+
+    expect(keys).toEqual([
+      'govuk-analytics-consent.tags.my-tag.cookies.my_tag.purpose',
+      'govuk-analytics-consent.tags.my-tag.description'
+    ])
+    expect(context.tagDescriptions[0]?.text).toBe('Translated tag')
+    expect(context.cookies.find((cookie) => cookie.name === 'my_tag')?.purpose).toBe('Purpose fallback')
+  })
+
   it('localizes categories and built-in cookie descriptions per request', async () => {
     const options = resolveOptions({
       tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
-      messages: { cy: { analyticsCategoryTitle: 'Dadansoddi', gaCookiePurpose: 'Cyfrif ymweliadau' } }
+      messages: { cy: { 'govuk-analytics-consent': {
+        categories: { analytics: { title: 'Dadansoddi' } },
+        tags: { 'google-analytics': { cookies: { ga: { purpose: 'Cyfrif ymweliadau' } } } }
+      } } }
     })
     const english = await createConsentContext(options, { request: { headers: { 'accept-language': 'en' } } })
     const welsh = await createConsentContext(options, { request: { headers: { 'accept-language': 'cy' } } })
 
-    expect(english.categories.find((category) => category.id === 'analytics')?.title).toBe(defaultMessages.en.analyticsCategoryTitle)
+    expect(english.categories.find((category) => category.id === 'analytics')?.title).toBe(defaultMessages.en.categories.analytics.title)
     expect(welsh.categories.find((category) => category.id === 'analytics')?.title).toBe('Dadansoddi')
-    expect(english.cookies.find((cookie) => cookie.name === '_ga')?.purpose).toBe(defaultMessages.en.gaCookiePurpose)
+    expect(english.cookies.find((cookie) => cookie.name === '_ga')?.purpose).toBe(defaultMessages.en.tags['google-analytics'].cookies.ga.purpose)
     expect(welsh.cookies.find((cookie) => cookie.name === '_ga')?.purpose).toBe('Cyfrif ymweliadau')
-    expect(welsh.cookies.find((cookie) => cookie.name === options.cookieName)?.purpose).toBe(defaultMessages.cy.defaultCookiePurpose)
+    expect(welsh.cookies.find((cookie) => cookie.name === options.cookieName)?.purpose).toBe(defaultMessages.cy.cookies.consent.purpose)
     expect(welsh.categories.map((category) => category.id)).toEqual(english.categories.map((category) => category.id))
     expect(welsh.cookies.map((cookie) => cookie.name)).toEqual(english.cookies.map((cookie) => cookie.name))
   })
@@ -49,9 +136,9 @@ describe('resolveOptions', () => {
   it('keeps consent and removal identifiers stable when a factory changes them by language', async () => {
     const options = resolveOptions({
       cookies: [(messages) => [{
-        name: messages.acceptAll === defaultMessages.cy.acceptAll ? 'other_id' : 'tracking_id',
+        name: messages.banner.acceptAll === defaultMessages.cy.banner.acceptAll ? 'other_id' : 'tracking_id',
         categoryId: 'analytics',
-        purpose: messages.acceptAll,
+        purpose: messages.banner.acceptAll,
         expiry: '1 year'
       }]]
     })
@@ -67,10 +154,10 @@ describe('resolveOptions', () => {
     const options = resolveOptions({ getLanguage: async () => 'cy-GB' })
     const context = await createConsentContext(options, { request: { headers: { 'accept-language': 'en' } } })
 
-    expect(context.messages.acceptAll).toBe(defaultMessages.cy.acceptAll)
+    expect(context.messages.banner.acceptAll).toBe(defaultMessages.cy.banner.acceptAll)
     const browserOptions = resolveOptions({ getLanguage: () => undefined })
     const browser = await createConsentContext(browserOptions, { request: { headers: { 'accept-language': 'cy' } } })
-    expect(browser.messages.acceptAll).toBe(defaultMessages.cy.acceptAll)
+    expect(browser.messages.banner.acceptAll).toBe(defaultMessages.cy.banner.acceptAll)
   })
 
   it('negotiates a supported browser language, including regional preferences and quality', () => {
@@ -86,20 +173,23 @@ describe('resolveOptions', () => {
   })
 
   it('applies only the selected language overrides and falls back to overridden English', () => {
-    const messages = { en: { acceptAll: 'Accept' }, cy: { acceptAll: 'Derbyn' } }
+    const messages = {
+      en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept' } } },
+      cy: { 'govuk-analytics-consent': { banner: { acceptAll: 'Derbyn' } } }
+    }
 
-    expect(resolveMessages('cy', messages).acceptAll).toBe('Derbyn')
-    expect(resolveMessages('cy', messages).rejectAll).toBe(defaultMessages.cy.rejectAll)
-    expect(resolveMessages('cy', { en: messages.en }).acceptAll).toBe(defaultMessages.cy.acceptAll)
-    expect(resolveMessages('en', messages).acceptAll).toBe('Accept')
-    expect(resolveMessages('fr', messages).acceptAll).toBe('Accept')
+    expect(resolveMessages('cy', messages).banner.acceptAll).toBe('Derbyn')
+    expect(resolveMessages('cy', messages).banner.rejectAll).toBe(defaultMessages.cy.banner.rejectAll)
+    expect(resolveMessages('cy', { en: messages.en }).banner.acceptAll).toBe(defaultMessages.cy.banner.acceptAll)
+    expect(resolveMessages('en', messages).banner.acceptAll).toBe('Accept')
+    expect(resolveMessages('fr', messages).banner.acceptAll).toBe('Accept')
   })
 
   it('falls back to English when a language has no built-in messages', () => {
     expect(getDefaultMessages('cy')).toBe(defaultMessages.cy)
     expect(getDefaultMessages('fr')).toBe(defaultMessages.en)
     expect(getDefaultMessages('toString')).toBe(defaultMessages.en)
-    expect(resolveOptions().localize('en').messages.acceptAll).toBe('Accept all cookies')
+    expect(resolveOptions().localize('en').messages.banner.acceptAll).toBe('Accept all cookies')
   })
 
   it('builds category presets with the resolved localized messages', () => {
@@ -108,9 +198,9 @@ describe('resolveOptions', () => {
     })
 
     expect(resolved.localize('cy').categories.map(({ title, description }) => [title, description])).toEqual([
-      [defaultMessages['cy'].essentialCategoryTitle, defaultMessages['cy'].essentialCategoryDescription],
-      [defaultMessages['cy'].analyticsCategoryTitle, defaultMessages['cy'].analyticsCategoryDescription],
-      [defaultMessages['cy'].personalizationCategoryTitle, defaultMessages['cy'].personalizationCategoryDescription]
+      [defaultMessages.cy.categories.essential.title, defaultMessages.cy.categories.essential.description],
+      [defaultMessages.cy.categories.analytics.title, defaultMessages.cy.categories.analytics.description],
+      [defaultMessages.cy.categories.personalization.title, defaultMessages.cy.categories.personalization.description]
     ])
   })
 
@@ -140,27 +230,28 @@ describe('resolveOptions', () => {
   it('provides sensible default English copy', () => {
     const resolved = resolveOptions()
 
-    expect(resolved.messages.acceptAll).toBe('Accept all cookies')
-    expect(resolved.messages.rejectAll).toBe('Reject additional cookies')
-    expect(resolved.messages.changeSettings).toBe('Change your cookie settings')
-    expect(resolved.messages.saveSettings).toBe('Save cookie settings')
+    expect(resolved.messages.banner.acceptAll).toBe('Accept all cookies')
+    expect(resolved.messages.banner.rejectAll).toBe('Reject additional cookies')
+    expect(resolved.messages.cookies.changeSettings).toBe('Change your cookie settings')
+    expect(resolved.messages.cookies.saveSettings).toBe('Save cookie settings')
   })
 
   it('merges custom text over the default English copy', () => {
     const resolved = resolveOptions({
       messages: {
         en: {
-          acceptAll: 'Accept all',
-          rejectAll: 'Reject all',
-          changeSettings: 'Manage cookies'
+          'govuk-analytics-consent': {
+            banner: { acceptAll: 'Accept all', rejectAll: 'Reject all' },
+            cookies: { changeSettings: 'Manage cookies' }
+          }
         }
       }
     })
 
-    expect(resolved.messages.acceptAll).toBe('Accept all')
-    expect(resolved.messages.rejectAll).toBe('Reject all')
-    expect(resolved.messages.changeSettings).toBe('Manage cookies')
-    expect(resolved.messages.saveSettings).toBe('Save cookie settings')
+    expect(resolved.messages.banner.acceptAll).toBe('Accept all')
+    expect(resolved.messages.banner.rejectAll).toBe('Reject all')
+    expect(resolved.messages.cookies.changeSettings).toBe('Manage cookies')
+    expect(resolved.messages.cookies.saveSettings).toBe('Save cookie settings')
   })
 
   it('prefers an explicit container id over the environment', () => {
@@ -224,10 +315,18 @@ describe('cookies table defaults', () => {
       tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
       messages: {
         en: {
-          gaCookiePurpose: 'Custom analytics purpose',
-          gaSessionCookiePurpose: 'Custom session purpose',
-          gaCookieProvider: 'Custom provider',
-          gaCookieExpiry: 'Custom duration'
+          'govuk-analytics-consent': {
+            tags: {
+              'google-analytics': {
+                cookies: {
+                  ga: { purpose: 'Custom analytics purpose' },
+                  session: { purpose: 'Custom session purpose' }
+                },
+                provider: 'Custom provider',
+                expiry: 'Custom duration'
+              }
+            }
+          }
         }
       }
     })

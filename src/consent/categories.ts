@@ -40,8 +40,8 @@ export function buildCategoryPreset(
 function buildEssentialCategory(messages: ConsentMessages): CookieCategory {
   return {
     id: 'essential',
-    title: messages.essentialCategoryTitle,
-    description: messages.essentialCategoryDescription,
+    title: messages.categories.essential.title,
+    description: messages.categories.essential.description,
     essential: true,
     gtagSignals: ['security_storage']
   }
@@ -50,9 +50,9 @@ function buildEssentialCategory(messages: ConsentMessages): CookieCategory {
 function buildAnalyticsCategory(messages: ConsentMessages): CookieCategory {
   return {
     id: 'analytics',
-    title: messages.analyticsCategoryTitle,
+    title: messages.categories.analytics.title,
     shortName: 'analytics',
-    description: messages.analyticsCategoryDescription,
+    description: messages.categories.analytics.description,
     gtagSignals: ['analytics_storage']
   }
 }
@@ -60,9 +60,9 @@ function buildAnalyticsCategory(messages: ConsentMessages): CookieCategory {
 function buildAdvertisingCategory(messages: ConsentMessages): CookieCategory {
   return {
     id: 'advertising',
-    title: messages.advertisingCategoryTitle,
+    title: messages.categories.advertising.title,
     shortName: 'communications and marketing',
-    description: messages.advertisingCategoryDescription,
+    description: messages.categories.advertising.description,
     gtagSignals: ['ad_storage', 'ad_user_data', 'ad_personalization']
   }
 }
@@ -70,9 +70,9 @@ function buildAdvertisingCategory(messages: ConsentMessages): CookieCategory {
 function buildFunctionalityCategory(messages: ConsentMessages): CookieCategory {
   return {
     id: 'functionality',
-    title: messages.functionalityCategoryTitle,
+    title: messages.categories.functionality.title,
     shortName: 'functionality',
-    description: messages.functionalityCategoryDescription,
+    description: messages.categories.functionality.description,
     gtagSignals: ['functionality_storage']
   }
 }
@@ -80,9 +80,9 @@ function buildFunctionalityCategory(messages: ConsentMessages): CookieCategory {
 export function buildPersonalizationCategory(messages: ConsentMessages): CookieCategory {
   return {
     id: 'personalization',
-    title: messages.personalizationCategoryTitle,
+    title: messages.categories.personalization.title,
     shortName: 'settings',
-    description: messages.personalizationCategoryDescription,
+    description: messages.categories.personalization.description,
     gtagSignals: ['personalization_storage']
   }
 }

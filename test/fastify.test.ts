@@ -28,9 +28,13 @@ beforeEach(async () => {
     gtmContainerId: 'GTM-ABC123',
     tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
     messages: {
-      en: { acceptAll: 'Accept everything' },
-      cy: { acceptAll: 'Derbyn popeth' }
+      en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept everything' } } },
+      cy: { 'govuk-analytics-consent': { banner: { acceptAll: 'Derbyn popeth' } } }
     },
+    translate: (key, { request, response }) =>
+      key === 'govuk-analytics-consent.banner.acceptAll' && response !== undefined
+        ? (request as { headers: Record<string, unknown> }).headers['x-consent-copy'] as string | undefined
+        : undefined,
     getCsrfFormFields: async (_request, response) => ({
       csrfToken: await (response as FastifyReply & { generateCsrf: () => Promise<string> }).generateCsrf()
     })
@@ -54,6 +58,14 @@ afterEach(async () => {
 })
 
 describe('fastify integration', () => {
+  it('uses the current request and reply for host translation', async () => {
+    const translated = await server.inject({ url: '/start', headers: { 'x-consent-copy': 'From Fastify' } })
+    const ordinary = await server.inject('/start')
+
+    expect(translated.body).toContain('From Fastify')
+    expect(ordinary.body).toContain('Accept everything')
+  })
+
   it('renders each request in its preferred language with its own overrides', async () => {
     const english = await server.inject({ url: '/start', headers: { 'accept-language': 'en' } })
     const welsh = await server.inject({ url: '/start', headers: { 'accept-language': 'cy-GB' } })

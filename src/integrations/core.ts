@@ -53,12 +53,12 @@ export async function createConsentContext(
 ): Promise<ConsentContext> {
   const resolvedConsent = consent ?? readConsentFromHeader(cookieHeader, options.cookieName, options.cookieVersion)
   const formFields = await options.getCsrfFormFields?.(request, response) ?? {}
-  const requestedLanguage = await options.getLanguage?.(request)
+  const requestedLanguage = await options.getLanguage?.(request, response)
   const header = (request as { headers?: Record<string, unknown> } | undefined)?.headers?.['accept-language']
   const language = requestedLanguage === undefined
-    ? negotiateLanguage(typeof header === 'string' ? header : undefined)
-    : selectLanguage(requestedLanguage)
-  const viewModel = buildViewModel({ ...options, ...options.localize(language) }, {
+    ? negotiateLanguage(typeof header === 'string' ? header : undefined, options.hasHostTranslator)
+    : selectLanguage(requestedLanguage, options.hasHostTranslator)
+  const viewModel = buildViewModel({ ...options, ...options.localize(language, request, response) }, {
     consent: resolvedConsent,
     currentPath,
     returnTo,

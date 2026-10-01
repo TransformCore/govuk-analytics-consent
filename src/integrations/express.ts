@@ -53,6 +53,7 @@ export function registerExpress(
 
     void createConsentContext(resolved, {
       request: req,
+      response: res,
       consent: requestConsent.state,
       currentPath,
       returnTo: returnUrl !== null ? safeInternalPath(returnUrl, currentPath) : undefined,

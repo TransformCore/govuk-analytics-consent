@@ -1,4 +1,4 @@
-import type { LanguageCode, LocalizedMessages } from './messages.js'
+import type { LocalizedMessages, MessageTranslator } from './messages.js'
 import type { ResolvedCspDirectives } from '../tags/csp.js'
 import type { ConsentTagInput } from '../tags/presets.js'
 import type { GtmAllowlistInput, GtmRestrictions } from '../gtm/restrictions.js'
@@ -52,6 +52,9 @@ export interface CookieDefinition {
   purpose: string
   expiry: string
   provider?: string
+  purposeKey?: string
+  expiryKey?: string
+  providerKey?: string
   /** Glob matching the real cookie names, e.g. `_ga_*` for the `_ga_<id>` row; only `*` is a wildcard. Without it, `name` must match exactly. */
   match?: string
   /** Defaults to `'host-only'`, or `'never'` for essential categories. */
@@ -63,65 +66,68 @@ export interface TagDescription {
   text: string
 }
 
-export type CookieDefinitionFactory = (messages: ConsentMessages) => CookieDefinition[]
+export type TranslateMessage = (key: string, fallback?: string, values?: Record<string, string>) => string
+export type CookieDefinitionFactory = (messages: ConsentMessages, translate: TranslateMessage) => CookieDefinition[]
 
 export type CookieDefinitionInput = CookieDefinition | CookieDefinitionFactory
 
 export interface ConsentMessages {
-  bannerTitle: string
-  bannerIntro: string
-  bannerAdditional: string
-  acceptAll: string
-  rejectAll: string
-  viewCookies: string
-  accepted: string
-  rejected: string
-  changeSettings: string
-  cookiesPageTitle: string
-  cookiesPageIntro: string
-  essentialCookies: string
-  categoryQuestion: string
-  saveSettings: string
-  successBanner: string
-  successBannerLink: string
-  essentialCategoryTitle: string
-  essentialCategoryDescription: string
-  analyticsCategoryTitle: string
-  analyticsCategoryDescription: string
-  gaTagDescription: string
-  advertisingCategoryTitle: string
-  advertisingCategoryDescription: string
-  functionalityCategoryTitle: string
-  functionalityCategoryDescription: string
-  personalizationCategoryTitle: string
-  personalizationCategoryDescription: string
-  defaultCookiePurpose: string
-  gaCookiePurpose: string
-  gaSessionCookiePurpose: string
-  gaCookieProvider: string
-  gaCookieExpiry: string
-  hotjarTagDescription: string
-  hotjarSessionUserCookiePurpose: string
-  hotjarSessionCookiePurpose: string
-  hotjarCookiePurpose: string
-  hotjarCookieProvider: string
-  hotjarSessionUserCookieExpiry: string
-  hotjarSessionCookieExpiry: string
-  hotjarCookieExpiry: string
-  clarityUserCookiePurpose: string
-  claritySessionCookiePurpose: string
-  clarityClidCookiePurpose: string
-  clarityMuidCookiePurpose: string
-  clarityCookieProvider: string
-  clarityUserCookieExpiry: string
-  claritySessionCookieExpiry: string
-  tableHeaderName: string
-  tableHeaderPurpose: string
-  tableHeaderExpiry: string
-  yesLabel: string
-  noLabel: string
-  hideMessage: string
-  successTitle: string
+  banner: {
+    title: string
+    intro: string
+    additional: string
+    acceptAll: string
+    rejectAll: string
+    viewCookies: string
+    accepted: string
+    rejected: string
+    hide: string
+  }
+  cookies: {
+    title: string
+    intro: string
+    essential: string
+    categoryQuestion: string
+    changeSettings: string
+    saveSettings: string
+    successBanner: string
+    successBannerLink: string
+    successTitle: string
+    yes: string
+    no: string
+    consent: { purpose: string }
+    table: { name: string; purpose: string; expiry: string }
+  }
+  categories: Record<'essential' | 'analytics' | 'advertising' | 'functionality' | 'personalization', {
+    title: string
+    description: string
+  }>
+  tags: {
+    'google-analytics': {
+      description: string
+      provider: string
+      expiry: string
+      cookies: { ga: { purpose: string }; session: { purpose: string } }
+    }
+    hotjar: {
+      description: string
+      provider: string
+      cookies: {
+        sessionUser: { purpose: string; expiry: string }
+        session: { purpose: string; expiry: string }
+        other: { purpose: string; expiry: string }
+      }
+    }
+    'microsoft-clarity': {
+      provider: string
+      cookies: {
+        user: { purpose: string; expiry: string }
+        session: { purpose: string; expiry: string }
+        clid: { purpose: string }
+        muid: { purpose: string }
+      }
+    }
+  }
 }
 
 export interface GovUkAnalyticsConsentOptions {
@@ -152,8 +158,12 @@ export interface GovUkAnalyticsConsentOptions {
   serviceName?: string
   /** Partial message overrides for each supported language. */
   messages?: LocalizedMessages
+  /** Host message lookup; called separately for each request with that request's i18n context. */
+  translate?: MessageTranslator
+  /** Optional host logger for actionable non-fatal configuration warnings. */
+  logger?: { warn(message: string): void }
   /** Select a language from this request; defaults to the browser's Accept-Language preference. */
-  getLanguage?: (request: unknown) => string | undefined | Promise<string | undefined>
+  getLanguage?: (request: unknown, response?: unknown) => string | undefined | Promise<string | undefined>
   secureCookie?: boolean
   cookieMaxAge?: number
   /** Return a CSP nonce for the current request; applied to every injected <script>. */
@@ -190,8 +200,10 @@ export interface ResolvedOptions {
   tagDescriptions: TagDescription[]
   serviceName: string
   messages: ConsentMessages
+  translateMessage: TranslateMessage
+  hasHostTranslator: boolean
   getLanguage?: GovUkAnalyticsConsentOptions['getLanguage']
-  localize: (language: LanguageCode) => Pick<ResolvedOptions, 'messages' | 'categories' | 'cookies' | 'tagDescriptions'>
+  localize: (language: string, request?: unknown, response?: unknown) => Pick<ResolvedOptions, 'messages' | 'categories' | 'cookies' | 'tagDescriptions' | 'translateMessage'>
   cookie: ResolvedCookieOptions
   /** GTM sources merged with every tag's sources. */
   csp: ResolvedCspDirectives

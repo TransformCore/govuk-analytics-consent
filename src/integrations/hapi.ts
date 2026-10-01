@@ -120,6 +120,7 @@ export function registerHapi(
         ...(response.source.context ?? {}),
         govukAnalyticsConsent: await createConsentContext(resolved, {
           request,
+          response,
           consent: request.app.govukAnalyticsConsent.state,
           currentPath,
           returnTo: returnUrl !== null ? safeInternalPath(returnUrl, currentPath) : undefined,

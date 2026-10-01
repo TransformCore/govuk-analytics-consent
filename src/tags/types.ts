@@ -1,4 +1,4 @@
-import type { ConsentMessages, CookieDefinitionFactory } from '../consent/types.js'
+import type { ConsentMessages, CookieDefinitionFactory, TranslateMessage } from '../consent/types.js'
 import type { CspDirectives } from './csp.js'
 
 /** A tag loaded through GTM, describing the cookies it sets and the CSP sources it needs. */
@@ -7,7 +7,8 @@ export interface ConsentTag {
   cookies: CookieDefinitionFactory
   csp: CspDirectives
   /** Plain text shown above the tag's cookie rows on the cookies page. */
-  description?: string | ((messages: ConsentMessages) => string)
+  /** The translator accepts keys relative to `govuk-analytics-consent.tags.<id>`. */
+  description?: string | ((messages: ConsentMessages, translate: TranslateMessage) => string)
   /** GTM tag type IDs or classes added by `gtmAllowlist: 'auto'`, e.g. `['hjtc']`. */
   gtmTypes?: readonly string[]
 }

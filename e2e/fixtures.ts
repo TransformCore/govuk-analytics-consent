@@ -37,7 +37,7 @@ export const test = base.extend<ScenarioOptions & Fixtures>({
     await use(getDefaultMessages(scenario.language))
   },
   bannerTitle: async ({ messages }, use) => {
-    await use(format(messages.bannerTitle, { serviceName: SERVICE_NAME }))
+    await use(format(messages.banner.title, { serviceName: SERVICE_NAME }))
   },
   optionalCategories: async ({ scenario, messages }, use) => {
     await use(
@@ -107,7 +107,7 @@ export function signals(categories: CookieCategory[], chosen: Record<string, boo
 }
 
 export function categoryQuestion(messages: ConsentMessages, category: CookieCategory): string {
-  return format(messages.categoryQuestion, { label: category.shortName ?? category.title })
+  return format(messages.cookies.categoryQuestion, { label: category.shortName ?? category.title })
 }
 
 export async function readConsent(context: BrowserContext): Promise<Record<string, boolean> | null> {
