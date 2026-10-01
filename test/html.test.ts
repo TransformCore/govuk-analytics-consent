@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { googleAnalytics } from '../src/tags/google-analytics.js'
+import { hotjar } from '../src/tags/hotjar.js'
 import { resolveOptions } from '../src/consent/options.js'
 import { createInitialState, withCategoryChoices } from '../src/consent/state.js'
+import { createConsentContext } from '../src/integrations/core.js'
 import {
   renderConsentBanner,
   renderConsentCookiesPage,
@@ -166,7 +168,30 @@ describe('renderConsentCookiesPage', () => {
     const html = cookiesPage({ tags: [googleAnalytics({ measurementId: 'G-ABC123' })] })
 
     expect(html).toContain('_ga_ABC123')
+    expect(html).toContain('We use Google Analytics to measure how you use the service')
     expect(html).toContain('name="cookies[analytics]"')
+  })
+
+  it('renders custom tag copy with HTML escaped in its cookie category', () => {
+    const html = cookiesPage({
+      categories: ['default', 'advertising'],
+      tags: [{ ...googleAnalytics({ categoryId: 'advertising' }), description: 'Measure <visits> & conversions' }]
+    })
+
+    expect(html).toContain('<p class="govuk-body">Measure &lt;visits&gt; &amp; conversions</p>')
+    expect(html.indexOf('Measure &lt;visits&gt;')).toBeGreaterThan(html.indexOf('Cookies that help with our communications'))
+    expect(html.indexOf('Measure &lt;visits&gt;')).toBeLessThan(html.indexOf('_ga'))
+    expect(html).not.toContain('We use Google Analytics')
+  })
+
+  it('uses the request language for the GA tag description', async () => {
+    const context = await createConsentContext(resolveOptions({ tags: ['google-analytics'] }), {
+      request: { headers: { 'accept-language': 'cy' } }
+    })
+    const html = context.cookiesPage
+
+    expect(html).toContain('Rydym yn defnyddio Google Analytics')
+    expect(html).not.toContain('We use Google Analytics')
   })
 
   it('omits the analytics cookies table when GA rows are not supplied', () => {
@@ -174,6 +199,28 @@ describe('renderConsentCookiesPage', () => {
     const html = renderConsentCookiesPage(buildViewModel(resolved, { consent: createInitialState(1) }))
 
     expect(html).not.toContain('_ga')
+    expect(html).not.toContain('We use Google Analytics')
+  })
+
+  it('does not mention GA when another analytics tag is configured instead', () => {
+    const html = cookiesPage({ tags: [hotjar({ siteId: 1234567 })] })
+
+    expect(html).toContain('_hjSession_1234567')
+    expect(html).toContain('We use Hotjar to understand how people use the service')
+    expect(html).not.toContain('We use Google Analytics')
+  })
+
+  it('omits the Hotjar description when Hotjar is not configured', () => {
+    expect(cookiesPage({ tags: ['google-analytics'] })).not.toContain('We use Hotjar')
+  })
+
+  it('uses the request language for the Hotjar description', async () => {
+    const context = await createConsentContext(resolveOptions({ tags: [hotjar({ siteId: 1234567 })] }), {
+      request: { headers: { 'accept-language': 'cy' } }
+    })
+
+    expect(context.cookiesPage).toContain('Rydym yn defnyddio Hotjar')
+    expect(context.cookiesPage).not.toContain('We use Hotjar')
   })
 
   it('pre-checks the Yes radio matching an accepted choice', () => {

@@ -553,7 +553,8 @@ tag object. Call the preset function to pass options.
 Every preset function also accepts `categoryId` (default `'analytics'`), which must match a configured
 category. Without a measurement or site ID, the cookies page uses a generic `<id>` name; matching
 for removal uses wildcards either way. Cookie copy comes from the resolved messages, so it is
-localised and can be overridden.
+localised and can be overridden. The Google Analytics explanation appears only when its tag is
+configured; the analytics category description stays provider-neutral.
 
 First-party tag cookies use `'host-and-parents'` removal, because these tools set cookies on the
 broadest domain they can (for example `.defra.gov.uk` rather than `payments.defra.gov.uk`). As a
@@ -571,6 +572,7 @@ A tag is a plain object, so adding another tool needs no changes to this package
 ```js
 const mixpanel = {
   id: 'mixpanel',
+  description: 'We use Mixpanel to understand how people use the service.',
   cookies: () => [
     { name: 'mp_<token>_mixpanel', match: 'mp_*_mixpanel', categoryId: 'analytics', purpose: 'Mixpanel analytics', expiry: '1 year' }
   ],
@@ -583,7 +585,9 @@ const mixpanel = {
 const consent = createGovUkAnalyticsConsent({ tags: ['google-analytics', mixpanel] })
 ```
 
-`cookies` receives the resolved messages for the request language. Tag ids must be unique. An
+`description` is optional plain text rendered above the tag's cookie table in its first cookie's
+category. It can also be a function receiving the resolved messages for language-specific copy.
+`cookies` receives those messages too. Tag ids must be unique. An
 entry in `cookies` with the same `name` as a tag cookie overrides it.
 
 ### Restricting what GTM can run

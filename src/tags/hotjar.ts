@@ -19,6 +19,7 @@ export function hotjar(options: HotjarTagOptions = {}): ConsentTag {
 
   return {
     id: 'hotjar',
+    description: (messages) => messages.hotjarTagDescription,
     gtmTypes: options.gtmTypes ?? ['hjtc'],
     cookies: (messages) => [
       {

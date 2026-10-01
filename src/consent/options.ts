@@ -4,7 +4,6 @@ import { globToPattern } from './removal.js'
 import { normaliseRoutePrefix, safeInternalPath } from '../shared/url.js'
 import { gtmCspDirectives, mergeCspDirectives } from '../tags/csp.js'
 import { resolveTag } from '../tags/presets.js'
-import type { ConsentTag } from '../tags/types.js'
 import { resolveGtmRestrictions } from '../gtm/restrictions.js'
 import { resolveMessages, type LanguageCode } from './messages.js'
 import type {
@@ -70,11 +69,17 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
       : options.categories.flatMap((category) =>
           typeof category === 'string' ? buildCategoryPreset(category, messages) : [category]
         )
-    const cookies = resolveCookieDefinitions(options, tags, categories, { cookieName, cookieMaxAge, messages })
+    const tagCookies = tags.map((tag) => ({ tag, cookies: tag.cookies(messages) }))
+    const cookies = resolveCookieDefinitions(options, tagCookies.flatMap(({ cookies }) => cookies), categories, { cookieName, cookieMaxAge, messages })
+    const tagDescriptions = tagCookies.flatMap(({ tag, cookies }) => {
+      const categoryId = cookies[0]?.categoryId
+      const text = typeof tag.description === 'function' ? tag.description(messages) : tag.description
+      return categoryId !== undefined && text ? [{ categoryId, text }] : []
+    })
 
-    return { messages, categories, cookies }
+    return { messages, categories, cookies, tagDescriptions }
   }
-  const { messages, categories, cookies } = localize('en')
+  const { messages, categories, cookies, tagDescriptions } = localize('en')
   const localizedDisplay = (language: LanguageCode) => {
     const localized = localize(language)
     const categoriesById = new Map(localized.categories.map((category) => [category.id, category]))
@@ -99,7 +104,8 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
           expiry: translation.expiry,
           provider: translation.provider
         }
-      })
+      }),
+      tagDescriptions: localized.tagDescriptions
     }
   }
 
@@ -112,6 +118,7 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
     consentWaitForUpdate: resolveWaitForUpdate(options.consentWaitForUpdate),
     categories,
     cookies,
+    tagDescriptions,
     serviceName: options.serviceName ?? defaults.serviceName,
     messages,
     getLanguage: options.getLanguage,
@@ -137,7 +144,7 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
 
 function resolveCookieDefinitions(
   options: GovUkAnalyticsConsentOptions,
-  tags: ConsentTag[],
+  tagCookies: CookieDefinition[],
   categories: ResolvedOptions['categories'],
   defaultsContext: {
     cookieName: string
@@ -149,9 +156,7 @@ function resolveCookieDefinitions(
   const defaults = includeDefaults ? defaultCookieDefinitions(defaultsContext) : []
   const suppliedCookies: CookieDefinition[] = []
 
-  for (const tag of tags) {
-    suppliedCookies.push(...tag.cookies(defaultsContext.messages))
-  }
+  suppliedCookies.push(...tagCookies)
 
   for (const cookie of options.cookies ?? []) {
     suppliedCookies.push(
