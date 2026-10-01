@@ -28,7 +28,8 @@ const consent = createGovUkAnalyticsConsent({
   serviceName: 'Example service',
   cookiesPageUrl: '/cookies',
   categories: ['default', 'personalization'],
-  tags: [googleAnalytics()],
+  tags: ['google-analytics'],
+  gtmAllowlist: ['auto'],
   cookies: [
     { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
     { name: languageCookieName, categoryId: 'essential', purpose: 'Remembers your language choice', expiry: '1 year' },
