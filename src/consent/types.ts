@@ -58,6 +58,11 @@ export interface CookieDefinition {
   removeOnReject?: CookieRemoval
 }
 
+export interface TagDescription {
+  categoryId: string
+  text: string
+}
+
 export type CookieDefinitionFactory = (messages: ConsentMessages) => CookieDefinition[]
 
 export type CookieDefinitionInput = CookieDefinition | CookieDefinitionFactory
@@ -83,6 +88,7 @@ export interface ConsentMessages {
   essentialCategoryDescription: string
   analyticsCategoryTitle: string
   analyticsCategoryDescription: string
+  gaTagDescription: string
   advertisingCategoryTitle: string
   advertisingCategoryDescription: string
   functionalityCategoryTitle: string
@@ -94,6 +100,7 @@ export interface ConsentMessages {
   gaSessionCookiePurpose: string
   gaCookieProvider: string
   gaCookieExpiry: string
+  hotjarTagDescription: string
   hotjarSessionUserCookiePurpose: string
   hotjarSessionCookiePurpose: string
   hotjarCookiePurpose: string
@@ -180,10 +187,11 @@ export interface ResolvedOptions {
   consentWaitForUpdate: number | null
   categories: CookieCategory[]
   cookies: CookieDefinition[]
+  tagDescriptions: TagDescription[]
   serviceName: string
   messages: ConsentMessages
   getLanguage?: GovUkAnalyticsConsentOptions['getLanguage']
-  localize: (language: LanguageCode) => Pick<ResolvedOptions, 'messages' | 'categories' | 'cookies'>
+  localize: (language: LanguageCode) => Pick<ResolvedOptions, 'messages' | 'categories' | 'cookies' | 'tagDescriptions'>
   cookie: ResolvedCookieOptions
   /** GTM sources merged with every tag's sources. */
   csp: ResolvedCspDirectives

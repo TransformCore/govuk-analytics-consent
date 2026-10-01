@@ -1,6 +1,6 @@
 import { createInitialState } from '../consent/state.js'
 import type { GtmRestrictions } from '../gtm/restrictions.js'
-import type { ConsentState, CookieCategory, CookieDefinition, ResolvedOptions } from '../consent/types.js'
+import type { ConsentState, CookieCategory, CookieDefinition, ResolvedOptions, TagDescription } from '../consent/types.js'
 
 export interface ConsentViewModel {
   gtmContainerId: string | null
@@ -12,6 +12,7 @@ export interface ConsentViewModel {
   consentWaitForUpdate: number | null
   categories: CookieCategory[]
   cookies: CookieDefinition[]
+  tagDescriptions: TagDescription[]
   serviceName: string
   messages: ResolvedOptions['messages']
   consent: ConsentState
@@ -54,6 +55,7 @@ export function buildViewModel(
     consentWaitForUpdate: options.consentWaitForUpdate,
     categories: options.categories,
     cookies: options.cookies,
+    tagDescriptions: options.tagDescriptions,
     serviceName: options.serviceName,
     messages: options.messages,
     consent: consent ?? createInitialState(options.cookieVersion),

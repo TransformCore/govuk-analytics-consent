@@ -25,6 +25,8 @@ export const defaultMessages = {
       'These essential cookies do things like remember your progress through a form. They always need to be on.',
     analyticsCategoryTitle: 'Cookies that measure website use',
     analyticsCategoryDescription:
+      'These cookies help us understand how the service is used so we can improve it.',
+    gaTagDescription:
       'We use Google Analytics to measure how you use the service so we can improve it based on user needs. ' +
       'We do not allow Google to use or share the data about how you use this site.',
     advertisingCategoryTitle: 'Cookies that help with our communications and marketing',
@@ -41,6 +43,8 @@ export const defaultMessages = {
     gaSessionCookiePurpose: 'Used by Google Analytics to find and track an individual session with your device',
     gaCookieProvider: 'Google Analytics',
     gaCookieExpiry: '2 years',
+    hotjarTagDescription:
+      'We use Hotjar to understand how people use the service, including which pages they visit and how they interact with them, so we can improve it.',
     hotjarSessionUserCookiePurpose: 'Used by Hotjar to recognise you when you return to the service',
     hotjarSessionCookiePurpose: 'Used by Hotjar to link together the pages you visit in a single session',
     hotjarCookiePurpose: 'Used by Hotjar to test browser support and store details about your session',
@@ -87,6 +91,8 @@ export const defaultMessages = {
       'Mae’r cwcis hanfodol hyn yn gwneud pethau fel cofio eich cynnydd drwy ffurflen. Maent bob amser angen bod ymlaen.',
     analyticsCategoryTitle: 'Cwcis sy’n mesur defnydd o’r wefan',
     analyticsCategoryDescription:
+      'Mae’r cwcis hyn yn ein helpu i ddeall sut mae’r gwasanaeth yn cael ei ddefnyddio er mwyn ei wella.',
+    gaTagDescription:
       'Rydym yn defnyddio Google Analytics i fesur sut rydych chi’n defnyddio’r gwasanaeth fel y gallwn ei wella yn seiliedig ar anghenion defnyddwyr. ' +
       'Nid ydym yn caniatáu i Google ddefnyddio neu rannu’r data am sut rydych chi’n defnyddio’r safle.',
     advertisingCategoryTitle: 'Cwcis sy’n helpu gyda’n cyfathrebiadau a’n marchnata',
@@ -103,6 +109,8 @@ export const defaultMessages = {
     gaSessionCookiePurpose: 'Defnyddir i gadw cyflwr sesiwn ar gyfer Google Analytics.',
     gaCookieProvider: 'Google Analytics',
     gaCookieExpiry: '2 flynedd',
+    hotjarTagDescription:
+      'Rydym yn defnyddio Hotjar i ddeall sut mae pobl yn defnyddio’r gwasanaeth, gan gynnwys pa dudalennau maent yn ymweld â nhw a sut maent yn rhyngweithio â nhw, er mwyn i ni allu ei wella.',
     hotjarSessionUserCookiePurpose: 'Defnyddir gan Hotjar i’ch adnabod pan fyddwch yn dychwelyd i’r gwasanaeth',
     hotjarSessionCookiePurpose: 'Defnyddir gan Hotjar i gysylltu’r tudalennau rydych yn ymweld â nhw mewn un sesiwn',
     hotjarCookiePurpose: 'Defnyddir gan Hotjar i brofi cefnogaeth porwr a storio manylion am eich sesiwn',

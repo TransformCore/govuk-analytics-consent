@@ -206,6 +206,9 @@ function renderCategorySection(category: CookieCategory, viewModel: ConsentViewM
   return [
     `<h2 class="govuk-heading-m">${escapeHtml(category.title)}</h2>`,
     `<p class="govuk-body">${escapeHtml(category.description)}</p>`,
+    ...viewModel.tagDescriptions
+      .filter((description) => description.categoryId === category.id)
+      .map((description) => `<p class="govuk-body">${escapeHtml(description.text)}</p>`),
     renderCookiesTable(category, viewModel.cookies, viewModel),
     category.essential === true ? `<p class="govuk-body">${escapeHtml(viewModel.messages.essentialCookies)}</p>` : ''
   ].join('')

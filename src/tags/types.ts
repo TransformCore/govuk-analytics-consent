@@ -1,4 +1,4 @@
-import type { CookieDefinitionFactory } from '../consent/types.js'
+import type { ConsentMessages, CookieDefinitionFactory } from '../consent/types.js'
 import type { CspDirectives } from './csp.js'
 
 /** A tag loaded through GTM, describing the cookies it sets and the CSP sources it needs. */
@@ -6,6 +6,8 @@ export interface ConsentTag {
   id: string
   cookies: CookieDefinitionFactory
   csp: CspDirectives
+  /** Plain text shown above the tag's cookie rows on the cookies page. */
+  description?: string | ((messages: ConsentMessages) => string)
   /** GTM tag type IDs or classes added by `gtmAllowlist: 'auto'`, e.g. `['hjtc']`. */
   gtmTypes?: readonly string[]
 }
