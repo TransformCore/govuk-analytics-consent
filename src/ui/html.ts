@@ -265,8 +265,8 @@ function renderCategoryRadios(
   consent: ConsentState,
   messages: ConsentViewModel['messages']
 ): string {
-  const idPrefix = `cookies-${category.id}`
-  const name = `cookies[${category.id}]`
+  const idPrefix = safeHtmlAttribute(`cookies-${category.id}`)
+  const name = safeHtmlAttribute(`cookies[${category.id}]`)
   const label = category.shortName ?? category.title
   const accepted = hasChoice(consent) && isCategoryAccepted(consent, category)
   const legend = escapeHtml(formatMessage(messages.categoryQuestion, { label }))

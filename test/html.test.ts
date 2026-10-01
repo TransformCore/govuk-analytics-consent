@@ -191,6 +191,16 @@ describe('renderConsentCookiesPage', () => {
     expect(html).not.toContain('value="yes" checked')
   })
 
+  it('does not inject custom category IDs into radio attributes', () => {
+    const html = cookiesPage({
+      categories: [{ id: 'analytics"><script>', title: 'Analytics', description: 'Optional cookies.' }],
+      includeDefaultCookies: false
+    })
+
+    expect(html).not.toContain('analytics"><script>')
+    expect(html).toContain('id="" name=""')
+  })
+
   it('carries its own path as the hidden returnUrl so saving redirects back here', () => {
     const resolved = resolveOptions({ gtmContainerId: 'GTM-ABC123' })
     const html = renderConsentCookiesPage(buildViewModel(resolved, { currentPath: '/cookies?returnUrl=/start' }))
