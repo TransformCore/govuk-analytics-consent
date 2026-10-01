@@ -47,7 +47,7 @@ export function renderConsentScripts(viewModel: ConsentViewModel): string {
     'defer',
     `data-module="${CLIENT_SCRIPT_MODULE}"`,
     `data-cookie-name="${safeHtmlAttribute(viewModel.cookieName)}"`,
-    `data-cookie-version="${viewModel.cookieVersion}"`,
+    `data-cookie-version="${safeHtmlAttribute(String(viewModel.cookieVersion))}"`,
     `data-route-prefix="${safeHtmlAttribute(viewModel.routePrefix)}"`,
     `data-categories="${safeHtmlAttribute(safeCategoriesJson)}"`
   ].join(' ')
@@ -169,8 +169,12 @@ export function renderConsentCookiesPage(viewModel: ConsentViewModel): string {
 function renderHiddenFields(fields: Record<string, string>): string[] {
   return Object.entries(fields).map(
     ([name, value]) =>
-      `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`
+      `<input type="hidden" ${renderHtmlAttribute('name', name)} ${renderHtmlAttribute('value', value)}>`
   )
+}
+
+function renderHtmlAttribute(name: string, value: string): string {
+  return `${name}="${escapeHtml(value)}"`
 }
 
 /** Matches the markup a real `govukNotificationBanner({ type: "success" })` call would produce. */
