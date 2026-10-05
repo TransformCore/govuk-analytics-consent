@@ -408,7 +408,10 @@ npm run example:fastify
 Each command builds the package and serves the example at `http://localhost:3000` by default.
 Set `PORT=3001` to run another example alongside it. To try GTM and Google Analytics, set
 `GTM_CONTAINER_ID` and `GA_MEASUREMENT_ID` before starting an example; without them the example
-still runs without loading GTM.
+still runs without loading GTM. All three examples include nonce-based CSP and CSRF protection
+for the consent form. The Express session secret and Fastify cookie secret are generated at
+startup for local use; set `SESSION_SECRET` or `COOKIE_SECRET` to stable secrets when needed.
+Express's default in-memory session store is for examples only, not production deployments.
 
 ### Tests
 

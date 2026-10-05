@@ -15,8 +15,16 @@ GOV.UK Frontend page template, extend the package template instead of `govuk/tem
 ```
 
 The package template extends `govuk/template.njk` and adds consent head markup, the noscript
-fallback, cookie banner, and browser script to the appropriate GOV.UK blocks. If your view
-overrides `head`, `bodyStart`, or `bodyEnd`, call `super()` to retain that content:
+fallback, cookie banner, and browser script to the appropriate GOV.UK blocks.
+
+When CSP uses script nonces, the host application passes its per-response nonce as the
+`cspNonce` view local. GOV.UK Frontend uses it for its inline feature-detection script; use the
+same value for any inline scripts you add. Consent separately reads that nonce from the host's
+CSP integration for its own scripts. The [Hapi](hapi.md), [Express](express.md), and
+[Fastify](fastify.md) examples show how each framework supplies the view local.
+
+If your view overrides `head`, `bodyStart`, or `bodyEnd`, call `super()` to retain the consent
+content:
 
 ```njk
 {% extends "govuk-analytics-consent/template.njk" %}

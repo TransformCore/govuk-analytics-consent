@@ -42,18 +42,21 @@ The package does not set CSP headers itself; `consent.blankieCsp` merges GTM and
 
 ```js
 import Blankie from 'blankie'
+import Scooter from '@hapi/scooter'
 import consentPlugin from '@transform-uk/govuk-analytics-consent/hapi'
 import { createGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
 
 const consent = createGovUkAnalyticsConsent({ tags: ['google-analytics'] })
 
+await server.register(Scooter)
 await server.register({
   plugin: Blankie,
   options: consent.blankieCsp({
     generateNonces: true,
     scriptSrc: ['self'],
     connectSrc: ['self'],
-    imgSrc: ['self']
+    imgSrc: ['self'],
+    fontSrc: ['self']
   })
 })
 
@@ -61,9 +64,11 @@ await server.register({ plugin: consentPlugin, options: consent })
 ```
 
 The plugin uses `request.plugins.blankie.nonces.script` automatically. Set `getNonce` to override
-this when your service obtains its nonce elsewhere. Nonces avoid `'unsafe-inline'`; the GTM
-bootstrap propagates its nonce to the remote script. Blankie users may also need GOV.UK
-Frontend's published script hash in `scriptSrc`. For other CSP libraries, use `consent.csp`
+this when your service obtains its nonce elsewhere. Pass the nonce used by your CSP policy as
+`cspNonce` to `h.view()` for GOV.UK Frontend's inline script; the host template does not need to
+read it back from the consent context. Nonces avoid `'unsafe-inline'`; the GTM bootstrap
+propagates its nonce to the remote script. Blankie users may also need GOV.UK Frontend's
+published script hash in `scriptSrc`. For other CSP libraries, use `consent.csp`
 directly or the exported `mergeCspDirectives`, `toBlankieCsp`, and `toHelmetCsp` helpers.
 Tags configured only in GTM may require further origins.
 
@@ -77,7 +82,10 @@ provide the generated crumb to both consent forms:
 import Crumb from '@hapi/crumb'
 import consentPlugin from '@transform-uk/govuk-analytics-consent/hapi'
 
-await server.register(Crumb)
+await server.register({
+  plugin: Crumb,
+  options: { cookieOptions: { isSecure: process.env.NODE_ENV === 'production' } }
+})
 await server.register({
   plugin: consentPlugin,
   options: {

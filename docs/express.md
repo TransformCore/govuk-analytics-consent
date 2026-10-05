@@ -76,8 +76,10 @@ app.use(helmet.contentSecurityPolicy({
 registerGovUkAnalyticsConsent(app, consent)
 ```
 
-The package does not set CSP headers itself. For other CSP libraries, read `consent.csp` or use
-the exported `mergeCspDirectives`, `toBlankieCsp`, and `toHelmetCsp` helpers. Tags configured
+Express makes `res.locals.cspNonce` available to Nunjucks directly; the consent callback reads
+the same host-generated value for its scripts. The template does not need to obtain it from the
+consent context. The package does not set CSP headers itself. For other CSP libraries, read
+`consent.csp` or use the exported `mergeCspDirectives`, `toBlankieCsp`, and `toHelmetCsp` helpers. Tags configured
 only in GTM may require more origins. Nonces avoid `'unsafe-inline'`; the GTM bootstrap propagates
 its nonce to the remote script. GOV.UK Frontend's published script hash, if required, belongs in
 your own CSP configuration.

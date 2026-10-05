@@ -66,6 +66,7 @@ await app.register(helmet, {
     directives: consent.helmetCsp({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
+      styleSrc: ["'self'"],
       connectSrc: ["'self'"],
       imgSrc: ["'self'"],
       frameSrc: ["'self'"]
@@ -76,8 +77,9 @@ await app.register(helmet, {
 await app.register(consentPlugin, consent)
 ```
 
-The adapter reads `reply.cspNonce.script` when Helmet's nonce generation is enabled. To provide
-your own nonce source, set `getNonce: (request) => ...`; that callback takes precedence. The
+The adapter reads `reply.cspNonce.script` when Helmet's nonce generation is enabled. Pass that
+same value as `cspNonce` in your view context; do not read it back from the consent context.
+To provide your own nonce source, set `getNonce: (request) => ...`; that callback takes precedence. The
 package does not set CSP headers itself. For other CSP libraries, use `consent.csp` or the
 exported `mergeCspDirectives`, `toBlankieCsp`, and `toHelmetCsp` helpers. Tags configured only
 in GTM may need additional sources. Nonces avoid `'unsafe-inline'`, and the GTM bootstrap
@@ -98,8 +100,16 @@ import consentPlugin from '@transform-uk/govuk-analytics-consent/fastify'
 const app = Fastify()
 
 await app.register(cookie, { secret: process.env.COOKIE_SECRET })
-await app.register(csrfProtection, { cookieOpts: { signed: true } })
-app.addHook('preValidation', app.csrfProtection)
+await app.register(csrfProtection, {
+  cookieOpts: { signed: true, path: '/', httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' }
+})
+app.addHook('preValidation', (request, reply, done) => {
+  if (request.method === 'POST' && request.url.split('?')[0] === '/govuk-analytics-consent/consent') {
+    app.csrfProtection(request, reply, done)
+  } else {
+    done()
+  }
+})
 
 await app.register(consentPlugin, {
   getCsrfFormFields: async (_request, reply) => ({
@@ -108,9 +118,10 @@ await app.register(consentPlugin, {
 })
 ```
 
-The global hook validates unsafe requests, including the consent POST, before the package
-handler. For route-specific protection, use `verifyCsrfFormSubmission` with your own token
-verification function; returning `false` sends a `403`. Do not shared-cache HTML with
+The hook validates the consent POST before its handler without blocking GET requests that
+generate tokens. Adjust the path if you change `routePrefix`. Alternatively, use
+`verifyCsrfFormSubmission` with your own token verification function; returning `false` sends a
+`403`. Do not shared-cache HTML with
 request-specific tokens. Keep the signing secret outside source control and use HTTPS in
 production.
 
