@@ -23,10 +23,10 @@ npm install --save @transform-uk/govuk-analytics-consent
 
 ## Quick start
 
-Set the container ID:
+Requires Node.js 20 or newer. Set the container ID if you want to load GTM:
 
 ```sh
-GTM_CONTAINER_ID=GTM-XXXXXXX
+export GTM_CONTAINER_ID=GTM-XXXXXXX
 ```
 
 Choose your framework for registration, view setup, CSP, CSRF, and rate-limiting examples:
@@ -37,6 +37,22 @@ Choose your framework for registration, view setup, CSP, CSRF, and rate-limiting
 
 All three integrations register the consent routes. Set `serviceName` and opt into the tags your
 service uses; without a configured GTM container ID, it runs un-instrumented.
+
+### Documentation index
+
+| Guide | Use it for |
+| --- | --- |
+| [Hapi](docs/hapi.md) | Plugin registration, Vision views, Blankie CSP, Crumb CSRF, and handler access |
+| [Express](docs/express.md) | Middleware ordering, Nunjucks locals, Helmet CSP, session-backed CSRF, and handler access |
+| [Fastify](docs/fastify.md) | Plugin ordering, explicit view context, Helmet CSP, signed-cookie CSRF, and handler access |
+| [Templates](docs/templates.md) | GOV.UK template inheritance, manual macros, and host-provided CSP nonce locals |
+| [Localisation](docs/localisation.md) | Language selection, nested messages, per-request translators, and custom cookie/tag copy |
+| [Options](#options) | Complete registration options, defaults, and callback contracts |
+| [Development](#development) | Runnable examples, builds, and test commands |
+
+The framework snippets are integration recipes; the example servers are runnable applications.
+Use the template and localisation guides for shared behaviour rather than inventing
+framework-specific message or nonce conventions.
 
 ### Content Security Policy
 
@@ -374,7 +390,10 @@ All optional.
 | `cookiesPageUrl` | none | Renders the banner's "View cookies" link; same-origin paths only |
 | `consentWaitForUpdate` | `500` | Consent Mode `wait_for_update` in ms; `false` omits it |
 | `serviceName` | `this service` | Used in the banner heading |
-| `messages` | English defaults | Partial message override set for banner, page copy, category labels, table headers and other user-facing strings |
+| `messages` | Built-in English/Welsh copy | Per-language nested overrides under `govuk-analytics-consent`; missing leaves retain built-in copy. See [Localisation](docs/localisation.md) |
+| `getLanguage` | `Accept-Language`, then English | `(request, response?) => string or undefined`, sync or async; takes precedence over browser preferences. Returning `undefined` uses browser negotiation |
+| `translate` | none | Synchronous `(key, { language, request, response, values }) => string or undefined`; host lookup takes precedence over configured messages. Return `undefined` for missing keys. See [Localisation](docs/localisation.md) |
+| `logger` | none | Object with `warn(message)` for non-fatal configuration warnings; no default console logging or logging-framework dependency |
 | `categories` | essential + analytics | Built-in preset names or custom category objects; presets use the resolved messages. Add `essential: true` for always-on custom categories and `gtagSignals` for the Consent Mode signals they control |
 | `tags` | none | [Tags](#tags) loaded through GTM, as preset names such as `'google-analytics'` or tag objects; each adds its cookie rows and CSP origins |
 | `gtmAllowlist` | none | GTM type IDs or classes pushed as `gtm.allowlist`, or `'auto'` to generate it from `tags`; see [restricting GTM](#restricting-what-gtm-can-run) |
@@ -386,6 +405,13 @@ All optional.
 | `getNonce` | Blankie's script nonce in Hapi, or `@fastify/helmet`'s script nonce in Fastify; otherwise none | `(request) => string` — applied to every injected `<script>` for CSP; an explicit callback overrides automatic nonce detection |
 | `getCsrfFormFields` | none | `(request, response?) => fields` — sync or async map of CSRF hidden field names to string values; rendered, HTML-escaped, in both consent forms |
 | `verifyCsrfFormSubmission` | none | `(request, body) => boolean` — sync or async callback for validating a parsed consent POST; returning `false` responds with `403` |
+
+An explicit `getNonce` overrides automatic nonce detection; the host CSP layer still owns nonce
+generation and supplies template locals. Do not combine CSRF middleware validation with a
+second verifier unless your application deliberately requires both checks. Invalid configuration
+(for example, a malformed GTM ID or unknown cookie category) throws during registration rather
+than silently enabling tracking. Literal cookie text plus a translation key is an intentional
+fallback pair, not a configuration conflict.
 
 ## Development
 

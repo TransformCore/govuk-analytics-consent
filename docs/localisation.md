@@ -1,5 +1,12 @@
 # Localisation
 
+## Scope and prerequisites
+
+No i18n package or host translator is required. The examples below are registration recipes for
+an existing Hapi server or Express app, not complete applications. For Fastify, pass the same
+options to its consent plugin. Register consent once with the combined options you need; see
+the [framework guides](../README.md#documentation-index) for setup and middleware ordering.
+
 Built-in English and Welsh messages are selected for each request from the browser's
 `Accept-Language` header. Regional codes such as `cy-GB` are supported; missing or unsupported
 preferences fall back to English. The same language is used for the banner, cookies page,
@@ -28,6 +35,12 @@ registerGovUkAnalyticsConsent(server, {
 For a fixed Welsh service, use `getLanguage: () => 'cy'`. Without a host translator, unsupported
 languages fall back to English, including any `messages.en` overrides. With a host translator,
 missing host-only-language keys fall back to built-in English.
+
+`getLanguage(request, response?)` may be synchronous or asynchronous. Without a host translator,
+only English and Welsh are selected. With one, a well-formed host-only language can be selected
+by this callback or the highest-quality browser language preference; configure `getLanguage`
+from the host's selected locale if its language policy differs. Callback errors are propagated,
+not silently converted into an English page.
 
 ## Overriding messages
 
@@ -58,7 +71,13 @@ Hierarchical keys can instead be kept in the service's message catalogue. The pa
 absent. No host translator is required. For example, an Express service using request-bound
 i18next can register its i18n middleware **before** the consent middleware:
 
+This recipe assumes that middleware already attaches `request.language`, `request.i18n`, and
+`request.t`, and that `appLogger` is your existing logger. It does not initialize i18next or
+load translation resources. Configure i18next's key/namespace separators to match your catalogue.
+
 ```js
+import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+
 registerGovUkAnalyticsConsent(app, {
   getLanguage: (request) => request.language,
   translate: (key, { request, language, values }) =>
@@ -76,6 +95,25 @@ The callback receives `{ language, request, response, values }`; it must return 
 on Fastify, Express and Hapi. Host-only languages can be selected by `getLanguage` or
 `Accept-Language` when a translator is configured; otherwise only English and Welsh are selected.
 
+### Lookup and fallback contract
+
+For each key, resolution uses:
+
+1. The current request's synchronous host `translate` callback, if configured.
+2. Nested `messages` overrides for the selected locale, then its base language. For a language
+  without built-in copy, configured English messages are also checked.
+3. The built-in translation for built-in keys: Welsh for `cy`/`cy-GB`, otherwise English.
+  Custom factory keys instead use their supplied literal fallback.
+
+An English override does not replace an absent Welsh override: built-in Welsh is retained.
+`undefined` or a returned key string means missing; an empty string is a translation rather
+than a missing key. A custom key with no configured translation or literal fallback throws.
+Host translator exceptions propagate. Do not return promises or mutate a global locale.
+
+Interpolation values such as `serviceName` and `label` are supplied as `values`. Adapters can
+interpolate them; the library also replaces `{name}` and `{{name}}` placeholders when values
+are available. Rendered copy is HTML-escaped, so return plain text, not HTML or pre-escaped text.
+
 ## Custom tags and cookies
 
 Keys for tags use their definition IDs, for example
@@ -84,6 +122,8 @@ translator scoped to `govuk-analytics-consent.tags.<tag.id>`; calling `translate
 'Fallback')` from a tag with ID `my-tag` looks up `govuk-analytics-consent.tags.my-tag.description`.
 Custom cookie factories receive a translator accepting full keys and a literal fallback.
 Plain custom cookies can localize their display copy directly:
+
+This is the `cookies` property of a registration options object, not a standalone program:
 
 ```js
 cookies: [{
@@ -98,6 +138,20 @@ not warn. `providerKey` works the same way. Structural fields such as cookie nam
 IDs never vary by language. A custom factory using a key not in the built-in catalogue must
 provide a fallback or a configured translation. An optional `logger.warn` receives non-fatal
 configuration warnings once at registration; there is no default console logging.
+
+Factories receive `(messages, translate)`, where `messages` is the resolved nested built-in
+catalogue. They also run at registration to establish canonical cookie identifiers, before a
+request translator exists. Supply a literal default or configured English message for custom
+factory keys so registration works without host i18n. The package preserves canonical cookie
+names and category IDs when applying per-request display translations.
+
+## Verification
+
+Check the same page with English and Welsh requests, and with a host-only language if configured.
+An absent host translation must retain readable fallback copy rather than a key name. Verify a
+custom cookie purpose changes with language while its name and category stay unchanged, and
+interleave requests in different languages to catch shared-locale leakage. Without host i18n,
+registration and rendering must still work using built-in messages and custom literal defaults.
 
 ## Upgrading
 

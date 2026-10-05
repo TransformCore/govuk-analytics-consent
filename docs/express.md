@@ -1,9 +1,28 @@
 # Express integration
 
+## Prerequisites and scope
+
+These snippets modify an existing Express `app`; they are not complete server programs. They
+assume the referenced view files exist. Security snippets are alternatives or additions to
+registration, not commands to register consent repeatedly. Combine selected options and register
+consent once. Use the [Express example](../examples/express/server.js) for a runnable application,
+and the [options reference](../README.md#options) for callback contracts.
+
+```sh
+npm install @transform-uk/govuk-analytics-consent express nunjucks govuk-frontend
+# Optional security middleware; choose one CSRF recipe:
+npm install helmet express-session csrf-sync express-rate-limit
+# For the alternative double-submit recipe:
+npm install csrf-csrf cookie-parser
+```
+
+## Registration and views
+
 Install the [package](../README.md#install), set `GTM_CONTAINER_ID=GTM-XXXXXXX`, and register
 the Nunjucks templates and consent middleware:
 
 ```js
+import nunjucks from 'nunjucks'
 import {
   registerGovUkAnalyticsConsent,
   govukAnalyticsConsentTemplatePath
@@ -139,6 +158,11 @@ form. Configure `sessionMiddleware` yourself, register `cookie-parser` after `ex
 when both are used, keep secrets outside source control, and never shared-cache token-bearing
 HTML.
 
+`sessionMiddleware` in these recipes is your configured `express-session` middleware; it is
+not exported by this package. `config.csrfSecret` is a host-provided secret, not a literal value
+to copy. Configure a production session store and HTTPS cookie settings; the runnable example's
+in-memory store and generated startup secret are only suitable for local development.
+
 ## Rate limiting
 
 Rate limiting complements CSRF protection but does not replace it. Install
@@ -181,3 +205,18 @@ Mount your own cookies-page route and render
 `cookiesPageUrl: '/cookies'` to link to it from the banner. See the
 [cookies-page example](../examples/views/cookies.njk) and [cookie configuration](../README.md#cookies-page).
 For per-request language selection and host translators, see [Localisation](localisation.md).
+
+## Integration checklist
+
+1. Configure Nunjucks search paths and static GOV.UK assets. Choose CSP and one CSRF strategy.
+2. Generate the host nonce before Helmet and consent. Configure session middleware, form parsing,
+  CSRF validation, and any rate limiter before consent registration. Host i18n also runs first.
+3. Register consent once, then application routes. Consent supplies `req.govukAnalyticsConsent`
+  and `res.locals.govukAnalyticsConsent`; the host supplies `res.locals.cspNonce` independently.
+4. Extend the package template or add its macros without rendering a duplicate banner. Mount
+  `/cookies` and set `cookiesPageUrl` if needed.
+5. With CSRF enabled, verify a missing-token consent POST returns `403` and a valid form POST
+  returns `303` with a consent cookie. With CSP enabled, every script nonce must match the
+  response header and browser tools must show no CSP violations.
+6. Test JavaScript-disabled form submission and concurrent requests in different languages.
+  Do not shared-cache nonce- or token-bearing HTML. See [Development](../README.md#development).

@@ -1,5 +1,24 @@
 # Fastify integration
 
+## Prerequisites and scope
+
+The view snippets assume `@fastify/view` is already configured with Nunjucks and that your view
+files exist; registering consent does not provide `reply.view()`. Each security recipe replaces
+or extends registration, rather than registering consent a second time. Combine selected
+options and register consent once. The [Fastify example](../examples/fastify/server.js) is a
+runnable alternative that renders Nunjucks directly without `@fastify/view`.
+
+```sh
+npm install @transform-uk/govuk-analytics-consent fastify fastify-plugin @fastify/view nunjucks govuk-frontend
+# Optional security middleware used below:
+npm install @fastify/helmet @fastify/cookie @fastify/csrf-protection @fastify/rate-limit
+```
+
+See the [options reference](../README.md#options) for callback contracts. `COOKIE_SECRET` in the
+CSRF recipe must contain a host-provided signing secret; use HTTPS and secure cookies in production.
+
+## Registration and views
+
 Install the [package](../README.md#install) and the adapter's optional dependencies, then set
 `GTM_CONTAINER_ID=GTM-XXXXXXX`:
 
@@ -162,3 +181,20 @@ Mount a cookies-page route and render
 `cookiesPageUrl: '/cookies'` to link to it from the banner. See the
 [cookies-page example](../examples/views/cookies.njk) and [cookie configuration](../README.md#cookies-page).
 For per-request language selection and host translators, see [Localisation](localisation.md).
+
+## Integration checklist
+
+1. Configure your view engine and static GOV.UK assets. Choose CSP and CSRF plugins appropriate
+  for your application, in the same Fastify scope as consent and the page routes.
+2. Register Helmet, cookie/CSRF plugins, and any rate limiter before consent. Validate form tokens
+  in `preValidation` after parsing; do not require CSRF tokens on GET pages. Host i18n must be
+  available by consent's `preHandler` hook.
+3. Register consent once. State is available from `onRequest`; the rendered context is available
+  from `preHandler`. Pass `request.govukAnalyticsConsentContext` explicitly to each view.
+4. Pass Helmet's script nonce as the separate `cspNonce` view local. Extend the package template
+  or add its macros without duplicating the banner. Mount `/cookies` and set `cookiesPageUrl`.
+5. With CSRF enabled, verify a missing-token consent POST returns `403` and a valid form POST
+  returns `303` with a consent cookie. With CSP enabled, script nonces must match the header
+  and browser tools must show no CSP violations.
+6. Test JavaScript-disabled form submission and different request languages. Do not shared-cache
+  nonce- or token-bearing HTML. See [Development](../README.md#development) for local checks.

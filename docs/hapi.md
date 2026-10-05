@@ -1,5 +1,21 @@
 # Hapi integration
 
+## Prerequisites and scope
+
+These snippets modify an existing Hapi `server`; they are not complete server programs. They
+assume Vision and Nunjucks are configured and GOV.UK Frontend templates are installed. For a
+runnable application with CSP and CSRF, use the [Hapi example](../examples/hapi/server.js).
+Choose the security recipes you need and register consent only once, combining their options
+into the same configuration. All registration options are listed in the [reference](../README.md#options).
+
+```sh
+npm install @transform-uk/govuk-analytics-consent @hapi/hapi @hapi/vision nunjucks govuk-frontend
+# Optional security middleware used below:
+npm install blankie @hapi/scooter @hapi/crumb hapi-rate-limit
+```
+
+## Registration and views
+
 Install the [package](../README.md#install), set `GTM_CONTAINER_ID=GTM-XXXXXXX`, and add the
 package templates to your Nunjucks search paths:
 
@@ -14,6 +30,9 @@ await server.register({
   options: { serviceName: 'Apply for a licence', tags: ['google-analytics'] }
 })
 ```
+
+Use `searchPaths` when constructing your Nunjucks `FileSystemLoader`; declaring the array alone
+does not configure Vision. Omit `GTM_CONTAINER_ID` when the service should not load GTM.
 
 The plugin registers the consent routes and injects `govukAnalyticsConsent` into Hapi view
 responses. Extend `govuk-analytics-consent/template.njk` instead of `govuk/template.njk` to add
@@ -141,3 +160,18 @@ Mount your own cookies-page route and render
 `cookiesPageUrl: '/cookies'` to link to that route from the banner. See the
 [cookies-page example](../examples/views/cookies.njk) and [cookie configuration](../README.md#cookies-page).
 For language selection and a per-request host translator, see [Localisation](localisation.md).
+
+## Integration checklist
+
+1. Configure Vision/Nunjucks search paths and mount the GOV.UK assets used by your layout.
+2. Create the consent configuration once. Register Scooter before Blankie, then CSRF and any
+  rate limiter before consent. Host i18n must be available before consent renders view responses.
+3. Register consent once; its `onRequest` hook exposes state and its `onPreResponse` hook adds
+  consent context to view responses. The host owns its page routes and CSP headers.
+4. Pass the host CSP nonce as `cspNonce` to views. Extend the package template or add its macros,
+  but do not render a second banner. Mount `/cookies` and set `cookiesPageUrl` if needed.
+5. With CSRF protection enabled, verify a consent POST without a token returns `403` and a
+  valid form POST returns `303` with a consent cookie. With CSP enabled, script nonces must
+  match the response header and browser tools must show no CSP violations.
+6. Test with JavaScript disabled and with two request languages. Shared-cache neither nonce-
+  nor token-bearing HTML. Use the [development commands](../README.md#development) for local checks.
