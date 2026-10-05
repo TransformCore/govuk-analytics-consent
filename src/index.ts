@@ -118,5 +118,6 @@ export type {
   CookieDefinitionInput,
   CookieRemoval,
   GovUkAnalyticsConsentOptions,
+  Logger,
   ResolvedOptions
 } from './consent/types.js'

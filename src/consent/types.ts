@@ -71,6 +71,14 @@ export type CookieDefinitionFactory = (messages: ConsentMessages, translate: Tra
 
 export type CookieDefinitionInput = CookieDefinition | CookieDefinitionFactory
 
+/** Host logger contract, compatible with console and common structured loggers. */
+export interface Logger {
+  debug(message: string, ...meta: any[]): void
+  info(message: string, ...meta: any[]): void
+  warn(message: string, ...meta: any[]): void
+  error(message: string, ...meta: any[]): void
+}
+
 export interface ConsentMessages {
   banner: {
     title: string
@@ -160,8 +168,8 @@ export interface GovUkAnalyticsConsentOptions {
   messages?: LocalizedMessages
   /** Host message lookup; called separately for each request with that request's i18n context. */
   translate?: MessageTranslator
-  /** Optional host logger for actionable non-fatal configuration warnings. */
-  logger?: { warn(message: string): void }
+  /** Host logger for package diagnostics; defaults to `console`. */
+  logger?: Logger
   /** Select a language from this request; defaults to the browser's Accept-Language preference. */
   getLanguage?: (request: unknown, response?: unknown) => string | undefined | Promise<string | undefined>
   secureCookie?: boolean
@@ -200,6 +208,7 @@ export interface ResolvedOptions {
   tagDescriptions: TagDescription[]
   serviceName: string
   messages: ConsentMessages
+  logger: Logger
   translateMessage: TranslateMessage
   hasHostTranslator: boolean
   getLanguage?: GovUkAnalyticsConsentOptions['getLanguage']

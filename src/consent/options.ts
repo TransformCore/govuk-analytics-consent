@@ -50,6 +50,7 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
   }
 
   const cookieMaxAge = options.cookieMaxAge ?? ONE_YEAR_SECONDS
+  const logger = options.logger ?? console
   const resolvedGtmContainerId = gtmContainerId === '' ? null : gtmContainerId
   const tags = (options.tags ?? []).map(resolveTag)
   const tagIds = new Set<string>()
@@ -64,7 +65,7 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
 
   for (const language of Object.keys(options.messages ?? {})) {
     if (language !== 'en' && language !== 'cy' && options.translate === undefined) {
-      options.logger?.warn(`Messages for "${language}" cannot be selected without a host translator`)
+      logger.warn(`Messages for "${language}" cannot be selected without a host translator`)
     }
   }
 
@@ -135,6 +136,7 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
     tagDescriptions,
     serviceName: options.serviceName ?? defaults.serviceName,
     messages,
+    logger,
     translateMessage: createMessageResolver('en', options.messages),
     hasHostTranslator: options.translate !== undefined,
     getLanguage: options.getLanguage,

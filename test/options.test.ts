@@ -71,8 +71,14 @@ describe('resolveOptions', () => {
 
   it('uses nested messages without a host library and only warns about unusable language catalogs', async () => {
     const warnings: string[] = []
+    const logger = {
+      debug: (_message: string, ..._meta: unknown[]) => {},
+      info: (_message: string, ..._meta: unknown[]) => {},
+      warn: (message: string, ..._meta: unknown[]) => warnings.push(message),
+      error: (_message: string, ..._meta: unknown[]) => {}
+    }
     const options = resolveOptions({
-      logger: { warn: (message) => warnings.push(message) },
+      logger,
       messages: { en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept here' } } }, fr: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accepter' } } } },
       cookies: [{ name: 'custom_id', categoryId: 'analytics', purpose: 'Purpose', purposeKey: 'govuk-analytics-consent.cookies.custom.purpose', expiry: 'Session' }]
     })
@@ -80,10 +86,15 @@ describe('resolveOptions', () => {
 
     expect(context.messages.banner.acceptAll).toBe('Accept here')
     expect(context.cookies.find((cookie) => cookie.name === 'custom_id')?.purpose).toBe('Purpose')
+    expect(options.logger).toBe(logger)
     expect(warnings).toEqual([expect.stringContaining('"fr"')])
     expect(resolveMessages('cy', {
       en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept here' } } }
     }).banner.acceptAll).toBe(defaultMessages.cy.banner.acceptAll)
+  })
+
+  it('uses console as the default logger', () => {
+    expect(resolveOptions().logger).toBe(console)
   })
 
   it('scopes custom tag translation keys to its definition id', async () => {

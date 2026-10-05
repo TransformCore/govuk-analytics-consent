@@ -390,28 +390,26 @@ All optional.
 | `cookiesPageUrl` | none | Renders the banner's "View cookies" link; same-origin paths only |
 | `consentWaitForUpdate` | `500` | Consent Mode `wait_for_update` in ms; `false` omits it |
 | `serviceName` | `this service` | Used in the banner heading |
-| `messages` | Built-in English/Welsh copy | Per-language nested overrides under `govuk-analytics-consent`; missing leaves retain built-in copy. See [Localisation](docs/localisation.md) |
-| `getLanguage` | `Accept-Language`, then English | `(request, response?) => string or undefined`, sync or async; takes precedence over browser preferences. Returning `undefined` uses browser negotiation |
-| `translate` | none | Synchronous `(key, { language, request, response, values }) => string or undefined`; host lookup takes precedence over configured messages. Return `undefined` for missing keys. See [Localisation](docs/localisation.md) |
-| `logger` | none | Object with `warn(message)` for non-fatal configuration warnings; no default console logging or logging-framework dependency |
+| `messages` | Built-in English/Welsh copy | Nested overrides per language under `govuk-analytics-consent`; an absent Welsh leaf keeps its Welsh default rather than using an English override. For host-only locales, configured English copy is the fallback before built-in English. See [Localisation](docs/localisation.md#lookup-and-fallback-contract) |
+| `getLanguage` | `Accept-Language`, then English | `(request, response?) => string or undefined`, sync or async; called per request and takes priority over browser preferences. Returning `undefined` uses browser negotiation; errors propagate |
+| `translate` | none | Synchronous per-request `(key, { language, request, response, values }) => string or undefined`; host result takes priority over nested `messages`. Return `undefined` or the key itself when missing; an empty string is a valid translation. Promises and global locale mutation are unsupported. See [Localisation](docs/localisation.md#using-a-host-translator) |
+| `logger` | `console` | Host logger with `debug`, `info`, `warn`, and `error` methods accepting `(message, ...meta)`. Standard structured loggers such as Pino can be passed directly. |
 | `categories` | essential + analytics | Built-in preset names or custom category objects; presets use the resolved messages. Add `essential: true` for always-on custom categories and `gtagSignals` for the Consent Mode signals they control |
 | `tags` | none | [Tags](#tags) loaded through GTM, as preset names such as `'google-analytics'` or tag objects; each adds its cookie rows and CSP origins |
 | `gtmAllowlist` | none | GTM type IDs or classes pushed as `gtm.allowlist`, or `'auto'` to generate it from `tags`; see [restricting GTM](#restricting-what-gtm-can-run) |
 | `gtmBlocklist` | none | GTM type IDs or classes pushed as `gtm.blocklist`; takes precedence over the allowlist |
-| `cookies` | none | Cookie definitions or factories for the cookies page; factories receive the resolved `messages` object. Entries merge with (and can override by `name`) the built-in consent-cookie row and tag cookies. `match` and `removeOnReject` control [removal on rejection](#removing-cookies-on-rejection) |
+| `cookies` | none | Cookie definitions or factories for the cookies page. A factory receives `(messages, translate)`; it runs during registration and per-request localization, so custom keys need a literal fallback or configured message. Entries merge by `name` with built-in and tag cookies. `match` and `removeOnReject` control [removal on rejection](#removing-cookies-on-rejection) |
 | `includeDefaultCookies` | `true` | Set to `false` to omit the built-in consent-cookie row |
 | `secureCookie` | `NODE_ENV === 'production'` | |
 | `cookieMaxAge` | 1 year (seconds) | |
-| `getNonce` | Blankie's script nonce in Hapi, or `@fastify/helmet`'s script nonce in Fastify; otherwise none | `(request) => string` — applied to every injected `<script>` for CSP; an explicit callback overrides automatic nonce detection |
-| `getCsrfFormFields` | none | `(request, response?) => fields` — sync or async map of CSRF hidden field names to string values; rendered, HTML-escaped, in both consent forms |
-| `verifyCsrfFormSubmission` | none | `(request, body) => boolean` — sync or async callback for validating a parsed consent POST; returning `false` responds with `403` |
+| `getNonce` | Blankie's script nonce in Hapi, `@fastify/helmet`'s script nonce in Fastify, otherwise none | `(request) => string or null`; called per request and applied to consent-injected scripts. The host CSP layer owns nonce generation; an explicit callback overrides automatic detection |
+| `getCsrfFormFields` | none | `(request, response?) => fields`, sync or async; supplies hidden fields to both consent forms. Names and values are HTML-escaped |
+| `verifyCsrfFormSubmission` | none | `(request, body) => boolean`, sync or async; used when middleware does not validate the POST. Returning `false` responds with `403`; omit it when CSRF middleware already protects the route |
 
-An explicit `getNonce` overrides automatic nonce detection; the host CSP layer still owns nonce
-generation and supplies template locals. Do not combine CSRF middleware validation with a
-second verifier unless your application deliberately requires both checks. Invalid configuration
-(for example, a malformed GTM ID or unknown cookie category) throws during registration rather
-than silently enabling tracking. Literal cookie text plus a translation key is an intentional
-fallback pair, not a configuration conflict.
+Invalid configuration (for example, a malformed GTM ID or unknown cookie category) throws during
+registration rather than silently enabling tracking. A literal cookie field alongside its
+translation key is an intentional fallback pair, not a configuration conflict. For exact message
+fallback behavior and factory registration timing, see [Localisation](docs/localisation.md).
 
 ## Development
 
