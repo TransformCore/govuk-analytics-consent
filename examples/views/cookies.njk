@@ -4,7 +4,7 @@
 
 {% set assetPath = "/govuk-frontend/assets" %}
 
-{% block pageTitle %}{{ govukAnalyticsConsent.messages.cookiesPageTitle }} - Example service{% endblock %}
+{% block pageTitle %}{{ govukAnalyticsConsent.messages.cookies.title }} - Example service{% endblock %}
 
 {% block head %}
   {{ super() }}
@@ -21,7 +21,7 @@
       items: [
         {
           href: "/cookies",
-          text: govukAnalyticsConsent.messages.cookiesPageTitle
+          text: govukAnalyticsConsent.messages.cookies.title
         },
         {
           href: languageSwitch.href,
@@ -34,7 +34,7 @@
 
 {% block bodyEnd %}
   {{ super() }}
-  <script type="module">
+  <script type="module" nonce="{{ cspNonce }}">
     import { initAll } from '/govuk-frontend/govuk-frontend.min.js'
     initAll()
   </script>

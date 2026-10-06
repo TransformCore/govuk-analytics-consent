@@ -15,6 +15,7 @@ export interface ConsentViewModel {
   tagDescriptions: TagDescription[]
   serviceName: string
   messages: ResolvedOptions['messages']
+  translateMessage: ResolvedOptions['translateMessage']
   consent: ConsentState
   currentPath: string
   /** The page to return to once cookie preferences are saved; defaults to `currentPath`. */
@@ -58,6 +59,7 @@ export function buildViewModel(
     tagDescriptions: options.tagDescriptions,
     serviceName: options.serviceName,
     messages: options.messages,
+    translateMessage: options.translateMessage,
     consent: consent ?? createInitialState(options.cookieVersion),
     currentPath,
     returnTo: returnTo ?? currentPath,

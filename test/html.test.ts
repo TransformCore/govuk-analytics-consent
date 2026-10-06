@@ -144,14 +144,16 @@ describe('renderConsentCookiesPage', () => {
     const html = cookiesPage({
       messages: {
         en: {
-          essentialCategoryTitle: 'Cwcis hanfodol',
-          essentialCategoryDescription: 'Mae hyn yn angenrheidiol.',
-          analyticsCategoryTitle: 'Cwcis dadansoddi',
-          analyticsCategoryDescription: 'Dadansoddiad.',
-          defaultCookiePurpose: 'Cadw’ch dewisiadau.',
-          tableHeaderName: 'Enw',
-          tableHeaderPurpose: 'Pwrpas',
-          tableHeaderExpiry: 'Dyddiad dod i ben'
+          'govuk-analytics-consent': {
+            categories: {
+              essential: { title: 'Cwcis hanfodol', description: 'Mae hyn yn angenrheidiol.' },
+              analytics: { title: 'Cwcis dadansoddi', description: 'Dadansoddiad.' }
+            },
+            cookies: {
+              consent: { purpose: 'Cadw’ch dewisiadau.' },
+              table: { name: 'Enw', purpose: 'Pwrpas', expiry: 'Dyddiad dod i ben' }
+            }
+          }
         }
       }
     })

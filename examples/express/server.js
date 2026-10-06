@@ -1,13 +1,17 @@
 import express from 'express'
+import { randomBytes } from 'node:crypto'
+import helmet from 'helmet'
+import session from 'express-session'
+import { csrfSync } from 'csrf-sync'
 import nunjucks from 'nunjucks'
 import {
   createGovUkAnalyticsConsent,
-  googleAnalytics,
   registerGovUkAnalyticsConsent,
   govukAnalyticsConsentTemplatePath
 } from '../../dist/index.js'
 import { exampleLanguage, languageCookieName, languageReturnUrl, languageView } from '../language.js'
 
+// Standard Express setup: app and Nunjucks view engine.
 const app = express()
 const port = Number(process.env.PORT ?? 3000)
 
@@ -16,7 +20,12 @@ nunjucks.configure(
   { express: app, autoescape: true }
 )
 
-// Reads GTM_CONTAINER_ID and GA_MEASUREMENT_ID from the environment; pass consent.helmetCsp(...) to Helmet if used.
+// Host CSRF middleware reads the field that the consent forms will render.
+const { generateToken, csrfSynchronisedProtection } = csrfSync({
+  getTokenFromRequest: (request) => request.body?._csrf
+})
+
+// Consent integration: declare categories and tags, then connect its nonce and form fields.
 const consent = createGovUkAnalyticsConsent({
   serviceName: 'Example service',
   cookiesPageUrl: '/cookies',
@@ -33,11 +42,36 @@ const consent = createGovUkAnalyticsConsent({
       expiry: '1 year'
     }
   ],
-  getLanguage: (request) => exampleLanguage(request.headers.cookie)
+  getLanguage: (request) => exampleLanguage(request.headers.cookie),
+  getNonce: (request) => request.res.locals.cspNonce,
+  getCsrfFormFields: (request) => ({ _csrf: generateToken(request) })
 })
 
+// Host CSP, session, and CSRF middleware must run before consent mounts its routes.
+app.use((request, response, next) => {
+  response.locals.cspNonce = randomBytes(16).toString('base64')
+  next()
+})
+app.use(helmet.contentSecurityPolicy({
+  directives: consent.helmetCsp({
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", (_request, response) => `'nonce-${response.locals.cspNonce}'`],
+    connectSrc: ["'self'"],
+    imgSrc: ["'self'"]
+  })
+}))
+app.use(session({
+  secret: process.env.SESSION_SECRET ?? randomBytes(32).toString('hex'),
+  resave: false,
+  saveUninitialized: false,
+  cookie: { sameSite: 'lax', secure: process.env.NODE_ENV === 'production' }
+}))
+app.use(express.urlencoded({ extended: false }))
+app.use('/govuk-analytics-consent/consent', csrfSynchronisedProtection)
+// Consent installs request state, view locals, and its browser/form routes.
 registerGovUkAnalyticsConsent(app, consent)
 
+// Ordinary app middleware and routes provide language switching, assets, and pages.
 app.use((req, res, next) => {
   Object.assign(res.locals, languageView(req.headers.cookie, req.originalUrl))
   next()
@@ -64,6 +98,7 @@ app.get('/language/:language', (req, res) => {
 })
 
 app.get('/', (req, res) => {
+  // Host code can use consent state when deciding what its own page displays.
   const consent = req.govukAnalyticsConsent
   const personalizationMessage = consent.isCategoryAccepted('personalization')
     ? 'Personalisation cookies are enabled. This page can use your saved display preferences.'
@@ -73,6 +108,7 @@ app.get('/', (req, res) => {
 
   res.render('index.njk', { personalizationMessage })
 })
+// The host owns /cookies; consent supplies the fragment rendered by this view.
 app.get('/cookies', (_req, res) => res.render('cookies.njk'))
 
 app.listen(port, () => console.log(`Listening on http://localhost:${port}`))

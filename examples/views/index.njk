@@ -24,7 +24,7 @@
       items: [
         {
           href: "/cookies",
-          text: govukAnalyticsConsent.messages.cookiesPageTitle
+          text: govukAnalyticsConsent.messages.cookies.title
         },
         {
           href: languageSwitch.href,
@@ -37,7 +37,7 @@
 
 {% block bodyEnd %}
   {{ super() }}
-  <script type="module">
+  <script type="module" nonce="{{ cspNonce }}">
     import { initAll } from '/govuk-frontend/govuk-frontend.min.js'
     initAll()
   </script>

@@ -28,16 +28,16 @@ test.describe('first visit', () => {
     const welshContext = await browser.newContext({ locale: 'cy-GB', baseURL })
     const welshPage = await welshContext.newPage()
     await welshPage.goto('/')
-    await expect(welshPage.getByRole('button', { name: welsh.acceptAll })).toBeVisible()
+    await expect(welshPage.getByRole('button', { name: welsh.banner.acceptAll })).toBeVisible()
     await welshPage.goto('/cookies')
-    await expect(welshPage.getByRole('heading', { level: 1, name: welsh.cookiesPageTitle })).toBeVisible()
-    await expect(welshPage.getByText(welsh.analyticsCategoryTitle)).toBeVisible()
+    await expect(welshPage.getByRole('heading', { level: 1, name: welsh.cookies.title })).toBeVisible()
+    await expect(welshPage.getByText(welsh.categories.analytics.title)).toBeVisible()
     await welshContext.close()
 
     await page.goto('/')
-    await expect(page.getByRole('button', { name: english.acceptAll })).toBeVisible()
+    await expect(page.getByRole('button', { name: english.banner.acceptAll })).toBeVisible()
     await page.goto('/cookies')
-    await expect(page.getByRole('heading', { level: 1, name: english.cookiesPageTitle })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: english.cookies.title })).toBeVisible()
   })
 
   test('shows the banner and denies optional consent by default', async ({ page, context, bannerTitle, messages, optionalCategories, serverMessage }) => {
@@ -45,8 +45,8 @@ test.describe('first visit', () => {
 
     const banner = page.getByRole('region', { name: bannerTitle })
     await expect(banner).toBeVisible()
-    await expect(banner.getByRole('button', { name: messages.acceptAll })).toBeVisible()
-    await expect(banner.getByRole('button', { name: messages.rejectAll })).toBeVisible()
+    await expect(banner.getByRole('button', { name: messages.banner.acceptAll })).toBeVisible()
+    await expect(banner.getByRole('button', { name: messages.banner.rejectAll })).toBeVisible()
     await expect(page.getByText(serverMessage(null))).toBeVisible()
     expect(await readConsent(context)).toBeNull()
 
@@ -60,10 +60,10 @@ test.describe('first visit', () => {
 
   test('view cookies link opens the cookies page with a return URL', async ({ page, bannerTitle, messages }) => {
     await page.goto('/')
-    await page.getByRole('region', { name: bannerTitle }).getByRole('link', { name: messages.viewCookies }).click()
+    await page.getByRole('region', { name: bannerTitle }).getByRole('link', { name: messages.banner.viewCookies }).click()
 
     await expect(page).toHaveURL('/cookies?returnUrl=%2F')
-    await expect(page.getByRole('heading', { level: 1, name: messages.cookiesPageTitle })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: messages.cookies.title })).toBeVisible()
   })
 })
 
@@ -73,10 +73,10 @@ test.describe('banner with JavaScript', () => {
     await page.goto('/')
     const banner = page.getByRole('region', { name: bannerTitle })
 
-    await banner.getByRole('button', { name: messages.acceptAll }).click()
+    await banner.getByRole('button', { name: messages.banner.acceptAll }).click()
 
-    await expect(banner.getByText(messages.accepted)).toBeVisible()
-    await expect(banner.getByRole('button', { name: messages.acceptAll })).toBeHidden()
+    await expect(banner.getByText(messages.banner.accepted)).toBeVisible()
+    await expect(banner.getByRole('button', { name: messages.banner.acceptAll })).toBeHidden()
     await expect(page).toHaveURL('/')
     expect(await readConsent(context)).toEqual(accepted)
 
@@ -84,7 +84,7 @@ test.describe('banner with JavaScript', () => {
     expect(consentCommands(dataLayer, 'update').at(-1)).toMatchObject(signals(optionalCategories, accepted))
     expect(dataLayer).toContainEqual({ event: 'cookie_consent_update', analytics_consent: true })
 
-    await banner.getByRole('button', { name: messages.hideMessage }).click()
+    await banner.getByRole('button', { name: messages.banner.hide }).click()
     await expect(banner).toBeHidden()
 
     await page.reload()
@@ -98,9 +98,9 @@ test.describe('banner with JavaScript', () => {
     await page.goto('/')
     const banner = page.getByRole('region', { name: bannerTitle })
 
-    await banner.getByRole('button', { name: messages.rejectAll }).click()
+    await banner.getByRole('button', { name: messages.banner.rejectAll }).click()
 
-    await expect(banner.getByText(messages.rejected)).toBeVisible()
+    await expect(banner.getByText(messages.banner.rejected)).toBeVisible()
     expect(await readConsent(context)).toEqual(rejected)
 
     const names = await cookieNames(context)
@@ -123,7 +123,7 @@ test.describe('banner without JavaScript', () => {
 
   test('accepting all cookies posts the form and redirects back', async ({ page, context, bannerTitle, messages, optionalCategories, serverMessage }) => {
     await page.goto('/')
-    await page.getByRole('region', { name: bannerTitle }).getByRole('button', { name: messages.acceptAll }).click()
+    await page.getByRole('region', { name: bannerTitle }).getByRole('button', { name: messages.banner.acceptAll }).click()
 
     await expect(page).toHaveURL('/')
     await expect(page.getByRole('region', { name: bannerTitle })).toHaveCount(0)
@@ -134,7 +134,7 @@ test.describe('banner without JavaScript', () => {
   test('rejecting additional cookies expires them server-side', async ({ page, context, baseURL, bannerTitle, messages, optionalCategories, serverMessage, nonEssentialCookies }) => {
     await seedCookies(context, baseURL, nonEssentialCookies)
     await page.goto('/')
-    await page.getByRole('region', { name: bannerTitle }).getByRole('button', { name: messages.rejectAll }).click()
+    await page.getByRole('region', { name: bannerTitle }).getByRole('button', { name: messages.banner.rejectAll }).click()
 
     await expect(page).toHaveURL('/')
     await expect(page.getByText(serverMessage(false))).toBeVisible()
@@ -167,25 +167,25 @@ test.describe('cookies page', () => {
     for (const category of optionalCategories) {
       await page
         .getByRole('group', { name: categoryQuestion(messages, category) })
-        .getByLabel(chosen[category.id] ? messages.yesLabel : messages.noLabel)
+        .getByLabel(chosen[category.id] ? messages.cookies.yes : messages.cookies.no)
         .check()
     }
-    await page.getByRole('button', { name: messages.saveSettings }).click()
+    await page.getByRole('button', { name: messages.cookies.saveSettings }).click()
 
     await expect(page).toHaveURL(/cookies-updated=true/)
-    const notification = page.getByRole('alert').filter({ hasText: messages.successBanner })
+    const notification = page.getByRole('alert').filter({ hasText: messages.cookies.successBanner })
     await expect(notification).toBeVisible()
     for (const category of optionalCategories) {
       await expect(
         page
           .getByRole('group', { name: categoryQuestion(messages, category) })
-          .getByLabel(chosen[category.id] ? messages.yesLabel : messages.noLabel)
+          .getByLabel(chosen[category.id] ? messages.cookies.yes : messages.cookies.no)
       ).toBeChecked()
     }
     await expect(page.getByRole('region', { name: bannerTitle })).toHaveCount(0)
     expect(await readConsent(context)).toEqual(chosen)
 
-    await notification.getByRole('link', { name: messages.successBannerLink }).click()
+    await notification.getByRole('link', { name: messages.cookies.successBannerLink }).click()
     await expect(page).toHaveURL('/')
     await expect(page.getByText(serverMessage(chosen.personalization === true))).toBeVisible()
 
@@ -195,16 +195,16 @@ test.describe('cookies page', () => {
 
   test('changing a previous choice overrides it', async ({ page, context, bannerTitle, messages, optionalCategories }) => {
     await page.goto('/')
-    await page.getByRole('region', { name: bannerTitle }).getByRole('button', { name: messages.acceptAll }).click()
-    await expect(page.getByText(messages.accepted)).toBeVisible()
+    await page.getByRole('region', { name: bannerTitle }).getByRole('button', { name: messages.banner.acceptAll }).click()
+    await expect(page.getByText(messages.banner.accepted)).toBeVisible()
 
     await page.goto('/cookies')
     const [analyticsCategory] = optionalCategories
     const analytics = page.getByRole('group', { name: categoryQuestion(messages, analyticsCategory!) })
-    await expect(analytics.getByLabel(messages.yesLabel)).toBeChecked()
+    await expect(analytics.getByLabel(messages.cookies.yes)).toBeChecked()
 
-    await analytics.getByLabel(messages.noLabel).check()
-    await page.getByRole('button', { name: messages.saveSettings }).click()
+    await analytics.getByLabel(messages.cookies.no).check()
+    await page.getByRole('button', { name: messages.cookies.saveSettings }).click()
 
     await expect(page).toHaveURL(/cookies-updated=true/)
     expect(await readConsent(context)).toEqual(

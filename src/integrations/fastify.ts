@@ -44,7 +44,9 @@ export const govukAnalyticsConsentFastifyPlugin: FastifyPluginAsync<GovUkAnalyti
         request.headers.cookie,
         request.hostname
       )
+    })
 
+    fastify.addHook('preHandler', async (request, reply) => {
       const currentPath = request.raw.url ?? '/'
       const returnUrl = readQueryParam(currentPath, 'returnUrl')
 

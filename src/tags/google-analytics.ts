@@ -19,15 +19,15 @@ export function googleAnalytics(options: GoogleAnalyticsTagOptions = {}): Consen
 
   return {
     id: 'google-analytics',
-    description: (messages) => messages.gaTagDescription,
+    description: (messages) => messages.tags['google-analytics'].description,
     gtmTypes: options.gtmTypes ?? ['googtag', 'gaawc', 'gaawe'],
     cookies: (messages) => [
       {
         name: '_ga',
         categoryId,
-        purpose: messages.gaCookiePurpose,
-        expiry: messages.gaCookieExpiry,
-        provider: messages.gaCookieProvider,
+        purpose: messages.tags['google-analytics'].cookies.ga.purpose,
+        expiry: messages.tags['google-analytics'].expiry,
+        provider: messages.tags['google-analytics'].provider,
         removeOnReject: 'host-and-parents'
       },
       {
@@ -35,9 +35,9 @@ export function googleAnalytics(options: GoogleAnalyticsTagOptions = {}): Consen
           ? '_ga_<id>'
           : `_ga_${measurementId.slice(2)}`,
         categoryId,
-        purpose: messages.gaSessionCookiePurpose,
-        expiry: messages.gaCookieExpiry,
-        provider: messages.gaCookieProvider,
+        purpose: messages.tags['google-analytics'].cookies.session.purpose,
+        expiry: messages.tags['google-analytics'].expiry,
+        provider: messages.tags['google-analytics'].provider,
         match: '_ga_*',
         removeOnReject: 'host-and-parents'
       }

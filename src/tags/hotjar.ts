@@ -19,33 +19,33 @@ export function hotjar(options: HotjarTagOptions = {}): ConsentTag {
 
   return {
     id: 'hotjar',
-    description: (messages) => messages.hotjarTagDescription,
+    description: (messages) => messages.tags.hotjar.description,
     gtmTypes: options.gtmTypes ?? ['hjtc'],
     cookies: (messages) => [
       {
         name: `_hjSessionUser_${suffix}`,
         categoryId,
-        purpose: messages.hotjarSessionUserCookiePurpose,
-        expiry: messages.hotjarSessionUserCookieExpiry,
-        provider: messages.hotjarCookieProvider,
+        purpose: messages.tags.hotjar.cookies.sessionUser.purpose,
+        expiry: messages.tags.hotjar.cookies.sessionUser.expiry,
+        provider: messages.tags.hotjar.provider,
         match: '_hjSessionUser_*',
         removeOnReject: 'host-and-parents'
       },
       {
         name: `_hjSession_${suffix}`,
         categoryId,
-        purpose: messages.hotjarSessionCookiePurpose,
-        expiry: messages.hotjarSessionCookieExpiry,
-        provider: messages.hotjarCookieProvider,
+        purpose: messages.tags.hotjar.cookies.session.purpose,
+        expiry: messages.tags.hotjar.cookies.session.expiry,
+        provider: messages.tags.hotjar.provider,
         match: '_hjSession_*',
         removeOnReject: 'host-and-parents'
       },
       {
         name: '_hj*',
         categoryId,
-        purpose: messages.hotjarCookiePurpose,
-        expiry: messages.hotjarCookieExpiry,
-        provider: messages.hotjarCookieProvider,
+        purpose: messages.tags.hotjar.cookies.other.purpose,
+        expiry: messages.tags.hotjar.cookies.other.expiry,
+        provider: messages.tags.hotjar.provider,
         match: '_hj*',
         removeOnReject: 'host-and-parents'
       }

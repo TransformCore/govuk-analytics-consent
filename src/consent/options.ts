@@ -5,7 +5,7 @@ import { normaliseRoutePrefix, safeInternalPath } from '../shared/url.js'
 import { gtmCspDirectives, mergeCspDirectives } from '../tags/csp.js'
 import { resolveTag } from '../tags/presets.js'
 import { resolveGtmRestrictions } from '../gtm/restrictions.js'
-import { resolveMessages, type LanguageCode } from './messages.js'
+import { MESSAGE_PREFIX, createMessageResolver, resolveMessages } from './messages.js'
 import type {
   CookieDefinition,
   CookieRemoval,
@@ -50,6 +50,7 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
   }
 
   const cookieMaxAge = options.cookieMaxAge ?? ONE_YEAR_SECONDS
+  const logger = options.logger ?? console
   const resolvedGtmContainerId = gtmContainerId === '' ? null : gtmContainerId
   const tags = (options.tags ?? []).map(resolveTag)
   const tagIds = new Set<string>()
@@ -62,31 +63,45 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
     tagIds.add(tag.id)
   }
 
-  const localize = (language: LanguageCode) => {
-    const messages = resolveMessages(language, options.messages)
+  for (const language of Object.keys(options.messages ?? {})) {
+    if (language !== 'en' && language !== 'cy' && options.translate === undefined) {
+      logger.warn(`Messages for "${language}" cannot be selected without a host translator`)
+    }
+  }
+
+  const localize = (language: string, request?: unknown, response?: unknown) => {
+    const hostTranslator = request === undefined && response === undefined ? undefined : options.translate
+    const messages = resolveMessages(language, options.messages, hostTranslator, request, response)
+    const translate = createMessageResolver(language, options.messages, hostTranslator, request, response)
     const categories = options.categories === undefined
       ? buildDefaultCategories(messages)
       : options.categories.flatMap((category) =>
           typeof category === 'string' ? buildCategoryPreset(category, messages) : [category]
         )
-    const tagCookies = tags.map((tag) => ({ tag, cookies: tag.cookies(messages) }))
-    const cookies = resolveCookieDefinitions(options, tagCookies.flatMap(({ cookies }) => cookies), categories, { cookieName, cookieMaxAge, messages })
-    const tagDescriptions = tagCookies.flatMap(({ tag, cookies }) => {
+    const tagCookies = tags.map((tag) => {
+      const tagTranslate: typeof translate = (key, fallback, values) =>
+        translate(key.startsWith(MESSAGE_PREFIX) ? key : `${MESSAGE_PREFIX}tags.${tag.id}.${key}`, fallback, values)
+
+      return { tag, cookies: tag.cookies(messages, tagTranslate), tagTranslate }
+    })
+    const cookies = resolveCookieDefinitions(options, tagCookies.flatMap(({ cookies }) => cookies), categories, { cookieName, cookieMaxAge, messages }, translate)
+    const tagDescriptions = tagCookies.flatMap(({ tag, cookies, tagTranslate }) => {
       const categoryId = cookies[0]?.categoryId
-      const text = typeof tag.description === 'function' ? tag.description(messages) : tag.description
+      const text = typeof tag.description === 'function' ? tag.description(messages, tagTranslate) : tag.description
       return categoryId !== undefined && text ? [{ categoryId, text }] : []
     })
 
-    return { messages, categories, cookies, tagDescriptions }
+    return { messages, categories, cookies, tagDescriptions, translateMessage: translate }
   }
   const { messages, categories, cookies, tagDescriptions } = localize('en')
-  const localizedDisplay = (language: LanguageCode) => {
-    const localized = localize(language)
+  const localizedDisplay = (language: string, request?: unknown, response?: unknown) => {
+    const localized = localize(language, request, response)
     const categoriesById = new Map(localized.categories.map((category) => [category.id, category]))
     const cookiesByName = new Map(localized.cookies.map((cookie) => [cookie.name, cookie]))
 
     return {
       messages: localized.messages,
+      translateMessage: localized.translateMessage,
       categories: categories.map((category) => {
         const translation = categoriesById.get(category.id)
         return translation === undefined ? category : {
@@ -121,6 +136,9 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
     tagDescriptions,
     serviceName: options.serviceName ?? defaults.serviceName,
     messages,
+    logger,
+    translateMessage: createMessageResolver('en', options.messages),
+    hasHostTranslator: options.translate !== undefined,
     getLanguage: options.getLanguage,
     localize: localizedDisplay,
     csp: mergeCspDirectives(gtmCspDirectives, ...tags.map((tag) => tag.csp)),
@@ -150,7 +168,8 @@ function resolveCookieDefinitions(
     cookieName: string
     cookieMaxAge: number
     messages: ResolvedOptions['messages']
-  }
+  },
+  translate: (key: string, fallback?: string) => string
 ): CookieDefinition[] {
   const includeDefaults = options.includeDefaultCookies ?? true
   const defaults = includeDefaults ? defaultCookieDefinitions(defaultsContext) : []
@@ -160,7 +179,7 @@ function resolveCookieDefinitions(
 
   for (const cookie of options.cookies ?? []) {
     suppliedCookies.push(
-      ...(typeof cookie === 'function' ? cookie(defaultsContext.messages) : [cookie])
+      ...(typeof cookie === 'function' ? cookie(defaultsContext.messages, translate) : [cookie])
     )
   }
 
@@ -205,7 +224,15 @@ function resolveCookieDefinitions(
       throw new Error(`The consent cookie "${defaultsContext.cookieName}" cannot be removed on reject`)
     }
 
-    return { ...cookie, removeOnReject }
+    const { purposeKey, expiryKey, providerKey, ...definition } = cookie
+
+    return {
+      ...definition,
+      purpose: purposeKey === undefined ? cookie.purpose : translate(purposeKey, cookie.purpose),
+      expiry: expiryKey === undefined ? cookie.expiry : translate(expiryKey, cookie.expiry),
+      provider: providerKey === undefined ? cookie.provider : translate(providerKey, cookie.provider ?? ''),
+      removeOnReject
+    }
   })
 }
 

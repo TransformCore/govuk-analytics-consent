@@ -1,18 +1,21 @@
 import Hapi from '@hapi/hapi'
 import Inert from '@hapi/inert'
 import Vision from '@hapi/vision'
+import Crumb from '@hapi/crumb'
+import Scooter from '@hapi/scooter'
+import Blankie from 'blankie'
 import nunjucks from 'nunjucks'
 import {
   createGovUkAnalyticsConsent,
-  googleAnalytics,
   govukAnalyticsConsentPlugin,
   govukAnalyticsConsentTemplatePath
 } from '../../dist/index.js'
 import { exampleLanguage, languageCookieName, languageReturnUrl, languageView } from '../language.js'
 
+// Standard Hapi setup: server, static files, and Nunjucks views.
 const server = Hapi.server({ port: Number(process.env.PORT ?? 3000), host: 'localhost' })
 
-await server.register([Inert, Vision])
+await server.register([Inert, Vision, Scooter])
 
 const env = new nunjucks.Environment(
   new nunjucks.FileSystemLoader([
@@ -35,7 +38,7 @@ server.views({
   path: 'examples/views'
 })
 
-// Reads GTM_CONTAINER_ID and GA_MEASUREMENT_ID from the environment; pass consent.blankieCsp(...) to Blankie if used.
+// Consent integration: describe the categories, tags, and cookies this service uses.
 const consent = createGovUkAnalyticsConsent({
   serviceName: 'Example service',
   cookiesPageUrl: '/cookies',
@@ -52,11 +55,29 @@ const consent = createGovUkAnalyticsConsent({
       expiry: '1 year'
     }
   ],
-  getLanguage: (request) => exampleLanguage(request.headers.cookie)
+  getLanguage: (request) => exampleLanguage(request.headers.cookie),
+  getCsrfFormFields: (request) => ({ crumb: request.plugins.crumb })
 })
 
+// Host security middleware: merge consent's CSP sources and issue CSRF tokens before registration.
+await server.register({
+  plugin: Blankie,
+  options: consent.blankieCsp({
+    generateNonces: true,
+    scriptSrc: ['self'],
+    connectSrc: ['self'],
+    imgSrc: ['self'],
+    fontSrc: ['self']
+  })
+})
+await server.register({
+  plugin: Crumb,
+  options: { cookieOptions: { isSecure: process.env.NODE_ENV === 'production' } }
+})
+// The consent plugin installs its routes and injects context into Hapi views.
 await server.register({ plugin: govukAnalyticsConsentPlugin, options: consent })
 
+// Ordinary service routes: language switching and GOV.UK assets belong to the host application.
 server.route({
   method: 'GET',
   path: '/language/{language}',
@@ -93,6 +114,7 @@ server.route({
   method: 'GET',
   path: '/',
   handler: (request, h) => {
+    // Host handlers can use the request's consent state to select their own content.
     const consent = request.app.govukAnalyticsConsent
     const personalizationMessage = consent.isCategoryAccepted('personalization')
       ? 'Personalisation cookies are enabled. This page can use your saved display preferences.'
@@ -101,6 +123,7 @@ server.route({
         : 'You have not chosen your cookie preferences yet. This page is using the default display settings.'
 
     return h.view('index.njk', {
+      cspNonce: request.plugins.blankie.nonces.script,
       personalizationMessage,
       ...languageView(request.headers.cookie, `${request.url.pathname}${request.url.search}`)
     })
@@ -110,8 +133,11 @@ server.route({
 server.route({
   method: 'GET',
   path: '/cookies',
-  handler: (request, h) => h.view('cookies.njk',
-    languageView(request.headers.cookie, `${request.url.pathname}${request.url.search}`))
+  // The host owns this route; the template renders the consent-provided cookies fragment.
+  handler: (request, h) => h.view('cookies.njk', {
+    cspNonce: request.plugins.blankie.nonces.script,
+    ...languageView(request.headers.cookie, `${request.url.pathname}${request.url.search}`)
+  })
 })
 
 await server.start()

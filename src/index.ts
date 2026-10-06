@@ -55,8 +55,9 @@ export {
   personalizationCategory,
   defaultCategories
 } from './consent/categories.js'
-export { defaultMessages, getDefaultMessages, resolveMessages } from './consent/messages.js'
-export type { ConsentMessages } from './consent/types.js'
+export { defaultMessages, getDefaultMessages, resolveMessages, createMessageResolver, MESSAGE_PREFIX } from './consent/messages.js'
+export type { LocalizedMessages, MessageTranslator, TranslationContext, MessageTree } from './consent/messages.js'
+export type { ConsentMessages, TranslateMessage } from './consent/types.js'
 export { defaultCookieDefinitions } from './consent/default-cookies.js'
 export { createGovUkAnalyticsConsent, isGovUkAnalyticsConsent } from './consent/create.js'
 export type { GovUkAnalyticsConsent, GovUkAnalyticsConsentInput } from './consent/create.js'
@@ -117,5 +118,6 @@ export type {
   CookieDefinitionInput,
   CookieRemoval,
   GovUkAnalyticsConsentOptions,
+  Logger,
   ResolvedOptions
 } from './consent/types.js'

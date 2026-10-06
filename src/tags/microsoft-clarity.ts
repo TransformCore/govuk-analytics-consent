@@ -13,34 +13,34 @@ export function microsoftClarity(options: MicrosoftClarityTagOptions = {}): Cons
       {
         name: '_clck',
         categoryId,
-        purpose: messages.clarityUserCookiePurpose,
-        expiry: messages.clarityUserCookieExpiry,
-        provider: messages.clarityCookieProvider,
+        purpose: messages.tags['microsoft-clarity'].cookies.user.purpose,
+        expiry: messages.tags['microsoft-clarity'].cookies.user.expiry,
+        provider: messages.tags['microsoft-clarity'].provider,
         removeOnReject: 'host-and-parents'
       },
       {
         name: '_clsk',
         categoryId,
-        purpose: messages.claritySessionCookiePurpose,
-        expiry: messages.claritySessionCookieExpiry,
-        provider: messages.clarityCookieProvider,
+        purpose: messages.tags['microsoft-clarity'].cookies.session.purpose,
+        expiry: messages.tags['microsoft-clarity'].cookies.session.expiry,
+        provider: messages.tags['microsoft-clarity'].provider,
         removeOnReject: 'host-and-parents'
       },
       // Set on Microsoft's domains, so the service cannot remove them.
       {
         name: 'CLID',
         categoryId,
-        purpose: messages.clarityClidCookiePurpose,
-        expiry: messages.clarityUserCookieExpiry,
-        provider: messages.clarityCookieProvider,
+        purpose: messages.tags['microsoft-clarity'].cookies.clid.purpose,
+        expiry: messages.tags['microsoft-clarity'].cookies.user.expiry,
+        provider: messages.tags['microsoft-clarity'].provider,
         removeOnReject: 'never'
       },
       {
         name: 'MUID',
         categoryId,
-        purpose: messages.clarityMuidCookiePurpose,
-        expiry: messages.clarityUserCookieExpiry,
-        provider: messages.clarityCookieProvider,
+        purpose: messages.tags['microsoft-clarity'].cookies.muid.purpose,
+        expiry: messages.tags['microsoft-clarity'].cookies.user.expiry,
+        provider: messages.tags['microsoft-clarity'].provider,
         removeOnReject: 'never'
       }
     ],
