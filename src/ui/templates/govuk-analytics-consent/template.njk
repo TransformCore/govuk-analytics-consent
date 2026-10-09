@@ -1,4 +1,9 @@
 {% extends "govuk/template.njk" %}
+{% from "govuk/macros/attributes.njk" import govukAttributes %}
+{% from "govuk/components/skip-link/macro.njk" import govukSkipLink %}
+{% from "govuk/components/header/macro.njk" import govukHeader %}
+{% from "govuk/components/service-navigation/macro.njk" import govukServiceNavigation %}
+{% from "govuk/components/footer/macro.njk" import govukFooter %}
 {% from "govuk-analytics-consent/macro.njk" import govukAnalyticsConsentHead, govukAnalyticsConsentNoscript, govukAnalyticsConsentBanner, govukAnalyticsConsentScripts %}
 
 {% block head %}
