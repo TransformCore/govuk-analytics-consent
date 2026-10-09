@@ -97,6 +97,25 @@ describe('GOV.UK page template', () => {
     expect(html).toContain('<script src="/service.js"></script>')
   })
 
+  it('exposes the GOV.UK template macros to templates extending the package template', () => {
+    const html = renderPage(`
+      {% extends "${PAGE_TEMPLATE_IMPORT_PATH}" %}
+      {% block content %}
+        {{ govukAttributes({ class: "service-attributes" }) }}
+        {{ govukSkipLink({ href: "#main-content", text: "Skip to content" }) }}
+        {{ govukHeader() }}
+        {{ govukServiceNavigation({ serviceName: "Example service" }) }}
+        {{ govukFooter() }}
+      {% endblock %}
+    `)
+
+    expect(html).toContain('class="service-attributes"')
+    expect(html).toContain('Skip to content')
+    expect(html).toContain('govuk-header')
+    expect(html).toContain('Example service')
+    expect(html).toContain('govuk-footer')
+  })
+
   it('renders a valid GOV.UK page when the consent context is missing', () => {
     const html = renderPage(`
       {% extends "${PAGE_TEMPLATE_IMPORT_PATH}" %}
