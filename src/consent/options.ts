@@ -28,6 +28,9 @@ export const defaults = {
 } as const
 
 export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): ResolvedOptions {
+  if (options.auditEnabled !== undefined && typeof options.auditEnabled !== 'boolean') {
+    throw new Error('auditEnabled must be a boolean')
+  }
   const rawContainerId = options.gtmContainerId ?? process.env.GTM_CONTAINER_ID ?? ''
   const gtmContainerId = rawContainerId.trim()
 
@@ -129,6 +132,7 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
     cookieName,
     cookieVersion,
     routePrefix: normaliseRoutePrefix(options.routePrefix ?? defaults.routePrefix),
+    auditEnabled: options.auditEnabled === true,
     cookiesPageUrl: resolveCookiesPageUrl(options.cookiesPageUrl),
     consentWaitForUpdate: resolveWaitForUpdate(options.consentWaitForUpdate),
     categories,

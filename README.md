@@ -1,4 +1,4 @@
-# @transform-uk/govuk-analytics-consent
+# govuk-analytics-consent
 
 Near zero-configuration GOV.UK cookie consent banner, including Google Tag Manager loading and Google
 Consent Mode integration for Node.js services. Built for Defra Hapi services, with first-class
@@ -18,8 +18,14 @@ Source: https://github.com/TransformCore/govuk-analytics-consent
 ## Install
 
 ```sh
-npm install --save @transform-uk/govuk-analytics-consent
+npm install --save govuk-analytics-consent
 ```
+
+The optional [cookie audit CLI](docs/auditing.md) is a separate development package,
+`govuk-analytics-consent-audit`, run directly with `npx` without a local installation.
+Enable `auditEnabled: true` on your server and
+point the tool at its URL; it reads the deployed declarations without importing application code.
+The application library does not include browser tooling.
 
 ## Quick start
 
@@ -47,6 +53,7 @@ service uses; without a configured GTM container ID, it runs un-instrumented.
 | [Fastify](docs/fastify.md) | Plugin ordering, explicit view context, Helmet CSP, signed-cookie CSRF, and handler access |
 | [Templates](docs/templates.md) | GOV.UK template inheritance, manual macros, and host-provided CSP nonce locals |
 | [Localisation](docs/localisation.md) | Language selection, nested messages, per-request translators, and custom cookie/tag copy |
+| [Cookie auditing](docs/auditing.md) | Optional browser CLI to detect undeclared cookies and check per-category consent |
 | [Options](#options) | Complete registration options, defaults, and callback contracts |
 | [Development](#development) | Runnable examples, builds, and test commands |
 
@@ -103,7 +110,7 @@ no `tags`, only the GTM sources and the consent-cookie row are included.
 import {
   createGovUkAnalyticsConsent,
   hotjar
-} from '@transform-uk/govuk-analytics-consent'
+} from 'govuk-analytics-consent'
 
 const consent = createGovUkAnalyticsConsent({
   tags: ['google-analytics', hotjar({ siteId: 1234567 }), 'microsoft-clarity']
@@ -226,7 +233,7 @@ Consent Mode signals. They are not enabled by default:
 Enable all three alongside the defaults:
 
 ```js
-import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+import { registerGovUkAnalyticsConsent } from 'govuk-analytics-consent'
 
 registerGovUkAnalyticsConsent(app, {
   categories: ['default', 'advertising', 'functionality', 'personalization']
@@ -387,6 +394,7 @@ All optional.
 | `cookieName` | `govuk_analytics_consent` | |
 | `cookieVersion` | `1` | Bumping it re-prompts every user. Use this if you need to ask for new consent. Details for when you might need to trigger this are in the [Cookies page design pattern](https://design-system.service.gov.uk/patterns/cookies-page/#keeping-your-cookies-page-up-to-date-and-asking-for-new-consent) |
 | `routePrefix` | `/govuk-analytics-consent` | |
+| `auditEnabled` | `false` | Exposes resolved cookie declarations at `GET {routePrefix}/audit.json` for the separate [audit CLI](docs/auditing.md); no values or private application settings are published |
 | `cookiesPageUrl` | none | Renders the banner's "View cookies" link; same-origin paths only |
 | `consentWaitForUpdate` | `500` | Consent Mode `wait_for_update` in ms; `false` omits it |
 | `serviceName` | `this service` | Used in the banner heading |
@@ -408,8 +416,8 @@ All optional.
 
 Invalid configuration (for example, a malformed GTM ID or unknown cookie category) throws during
 registration rather than silently enabling tracking. A literal cookie field alongside its
-translation key is an intentional fallback pair, not a configuration conflict. For exact message
-fallback behavior and factory registration timing, see [Localisation](docs/localisation.md).
+translation key provides fallback copy when a translation is unavailable. See
+[Localisation](docs/localisation.md) for message lookup and factory behavior.
 
 ## Development
 
@@ -430,8 +438,11 @@ npm run example:fastify
 ```
 
 Each command builds the package and serves the example at `http://localhost:3000` by default.
+All three example servers load a `.env` file from the working directory using dotenv. Set
+`PORT`, `GTM_CONTAINER_ID`, `GA_MEASUREMENT_ID`, `SESSION_SECRET` or `COOKIE_SECRET` there for
+local testing; existing shell environment variables take precedence. `.env` is git-ignored.
 Set `PORT=3001` to run another example alongside it. To try GTM and Google Analytics, set
-`GTM_CONTAINER_ID` and `GA_MEASUREMENT_ID` before starting an example; without them the example
+`GTM_CONTAINER_ID` and `GA_MEASUREMENT_ID` in `.env` or the shell; without them the example
 still runs without loading GTM. All three examples include nonce-based CSP and CSRF protection
 for the consent form. The Express session secret and Fastify cookie secret are generated at
 startup for local use; set `SESSION_SECRET` or `COOKIE_SECRET` to stable secrets when needed.
@@ -453,7 +464,7 @@ Vitest file, use `npx vitest run test/html.test.ts`.
 
 ## Publishing
 
-The package is published as a public scoped npm package. The `prepack` script builds `dist`,
+The package is published as a public npm package. The `prepare` script builds `dist`,
 and `prepublishOnly` runs type checking and tests before publishing.
 
 ```sh

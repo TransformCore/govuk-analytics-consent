@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import express from 'express'
 import { randomBytes } from 'node:crypto'
 import helmet from 'helmet'
@@ -29,11 +30,12 @@ const { generateToken, csrfSynchronisedProtection } = csrfSync({
 const consent = createGovUkAnalyticsConsent({
   serviceName: 'Example service',
   cookiesPageUrl: '/cookies',
+  auditEnabled: true,
   categories: ['default', 'personalization'],
   tags: ['google-analytics'],
   gtmAllowlist: ['auto'],
   cookies: [
-    { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
+    { name: 'connect.sid', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
     { name: languageCookieName, categoryId: 'essential', purpose: 'Remembers your language choice', expiry: '1 year' },
     {
       name: 'example_preferences',

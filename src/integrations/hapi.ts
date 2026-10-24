@@ -1,4 +1,5 @@
 import { resolveInput, type GovUkAnalyticsConsentInput } from '../consent/create.js'
+import { auditConfiguration } from '../consent/audit.js'
 import { clientAsset } from './client-asset.js'
 import {
   consentRoutePaths,
@@ -44,6 +45,14 @@ export function registerHapi(
   const paths = consentRoutePaths(resolved)
 
   defineCookie(server, resolved)
+
+  if (resolved.auditEnabled) {
+    server.route({
+      method: 'GET',
+      path: `${resolved.routePrefix}/audit.json`,
+      handler: (_request: any, h: any) => h.response(auditConfiguration(resolved)).header('cache-control', 'no-store')
+    })
+  }
 
   server.route([
     {

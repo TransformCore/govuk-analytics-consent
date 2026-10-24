@@ -85,6 +85,25 @@ afterEach(async () => {
 })
 
 describe('hapi integration', () => {
+  it('only publishes audit JSON when enabled, respecting the route prefix', async () => {
+    expect((await server.inject('/govuk-analytics-consent/audit.json')).statusCode).toBe(404)
+    const auditServer = Hapi.server()
+    try {
+      await auditServer.register({ plugin: govukAnalyticsConsentPlugin, options: {
+        auditEnabled: true, routePrefix: '/consent-tools',
+        cookies: [() => [{ name: 'generated', categoryId: 'analytics', purpose: 'Private', expiry: 'Session' }]]
+      } })
+      const response = await auditServer.inject('/consent-tools/audit.json')
+      expect(response.statusCode).toBe(200)
+      expect(response.headers['cache-control']).toBe('no-store')
+      expect(response.headers['content-type']).toContain('application/json')
+      expect(response.result).toMatchObject({ schemaVersion: 1, cookies: expect.arrayContaining([{ name: 'generated', categoryId: 'analytics' }]) })
+      expect(response.payload).not.toContain('Private')
+    } finally {
+      await auditServer.stop()
+    }
+  })
+
   it('uses the current request and view response for host translation', async () => {
     const translated = await server.inject({ url: '/start', headers: { 'x-consent-copy': 'From Hapi' } })
     const ordinary = await server.inject('/start')

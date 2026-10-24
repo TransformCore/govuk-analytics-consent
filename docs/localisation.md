@@ -13,7 +13,7 @@ preferences fall back to English. The same language is used for the banner, cook
 category presets, and built-in cookie descriptions:
 
 ```js
-import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+import { registerGovUkAnalyticsConsent } from 'govuk-analytics-consent'
 
 registerGovUkAnalyticsConsent(server, {
   serviceName: 'Example service',
@@ -78,7 +78,7 @@ initialize i18next or load translation resources. Configure i18next's key/namesp
 to match your catalogue.
 
 ```js
-import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+import { registerGovUkAnalyticsConsent } from 'govuk-analytics-consent'
 
 registerGovUkAnalyticsConsent(app, {
   getLanguage: (request) => request.language,
@@ -138,12 +138,11 @@ cookies: [{
 }]
 ```
 
-The literal fields are fallbacks if a key is missing; specifying both is intentional and does
-not warn. `providerKey` works the same way. Structural fields such as cookie names and category
-IDs never vary by language. A custom factory using a key not in the built-in catalogue must
-provide a fallback or a configured translation. The optional standard logger receives package
-diagnostics and defaults to `console`; the package currently uses `warn` for an unsupported
-message-locale configuration. Invalid configuration still throws.
+Literal fields provide fallbacks when a translation key is unavailable. `providerKey` works the
+same way. Structural fields such as cookie names and category IDs never vary by language. A
+custom factory using a key not in the built-in catalogue must provide a fallback or a configured
+translation. The optional standard logger receives package diagnostics and defaults to `console`.
+Invalid configuration throws.
 
 Factories receive `(messages, translate)`, where `messages` is the resolved nested built-in
 catalogue. They run during registration to establish canonical cookie identifiers and again for
@@ -159,10 +158,3 @@ An absent host translation must retain readable fallback copy rather than a key 
 custom cookie purpose changes with language while its name and category stay unchanged, and
 interleave requests in different languages to catch shared-locale leakage. Without host i18n,
 registration and rendering must still work using built-in messages and custom literal defaults.
-
-## Upgrading
-
-Move flat `messages` overrides into the nested `govuk-analytics-consent` tree as shown above.
-Custom cookie and tag factories now receive that same nested `ConsentMessages` shape. For HTML
-cached outside the library, vary the cache on `Accept-Language` (or your service's selected
-language) so one user's localized page is not served to another.

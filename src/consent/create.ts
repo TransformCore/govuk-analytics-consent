@@ -3,7 +3,7 @@ import { toBlankieCsp, toHelmetCsp } from '../tags/csp.js'
 import type { BlankieCspOptions, HelmetCspDirectives, ResolvedCspDirectives } from '../tags/csp.js'
 import type { GovUkAnalyticsConsentOptions, ResolvedOptions } from './types.js'
 
-const BRAND = Symbol.for('@transform-uk/govuk-analytics-consent')
+const BRAND = Symbol.for('govuk-analytics-consent')
 
 export interface GovUkAnalyticsConsent {
   readonly [BRAND]: true

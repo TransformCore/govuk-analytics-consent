@@ -58,6 +58,26 @@ afterEach(async () => {
 })
 
 describe('fastify integration', () => {
+  it('only publishes audit JSON when enabled, respecting the route prefix', async () => {
+    expect((await server.inject('/govuk-analytics-consent/audit.json')).statusCode).toBe(404)
+    const auditServer = Fastify()
+    try {
+      await auditServer.register(govukAnalyticsConsentPlugin, {
+        auditEnabled: true, routePrefix: '/consent-tools',
+        cookies: [() => [{ name: 'generated', categoryId: 'analytics', purpose: 'Private', expiry: 'Session' }]],
+        getCsrfFormFields: () => { throw new Error('Must not create CSRF tokens for audit JSON') }
+      })
+      const response = await auditServer.inject('/consent-tools/audit.json')
+      expect(response.statusCode).toBe(200)
+      expect(response.headers['cache-control']).toBe('no-store')
+      expect(response.headers['content-type']).toContain('application/json')
+      expect(response.json()).toMatchObject({ schemaVersion: 1, cookies: expect.arrayContaining([{ name: 'generated', categoryId: 'analytics' }]) })
+      expect(response.body).not.toContain('Private')
+    } finally {
+      await auditServer.close()
+    }
+  })
+
   it('uses the current request and reply for host translation', async () => {
     const translated = await server.inject({ url: '/start', headers: { 'x-consent-copy': 'From Fastify' } })
     const ordinary = await server.inject('/start')

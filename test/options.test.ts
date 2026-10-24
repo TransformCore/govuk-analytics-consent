@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { resolveOptions } from '../src/consent/options.js'
+import { auditConfiguration } from '../src/consent/audit.js'
 import { googleAnalytics } from '../src/tags/google-analytics.js'
 import { defaultMessages, getDefaultMessages, negotiateLanguage, resolveMessages, selectLanguage } from '../src/consent/messages.js'
 import { createConsentContext } from '../src/integrations/core.js'
@@ -30,6 +31,23 @@ afterEach(() => {
 })
 
 describe('resolveOptions', () => {
+  it('makes audit publishing opt-in and exposes only resolved declarations', () => {
+    expect(resolveOptions().auditEnabled).toBe(false)
+    expect(() => resolveOptions({ auditEnabled: 'true' as unknown as boolean })).toThrow('auditEnabled')
+    const options = resolveOptions({
+      auditEnabled: true, cookieName: 'choice', cookieVersion: 3, cookiesPageUrl: '/cookies',
+      serviceName: 'PRIVATE', tags: [googleAnalytics()],
+      cookies: [() => [{ name: 'generated', categoryId: 'analytics', purpose: 'PRIVATE', expiry: 'Session' }]],
+      getNonce: () => 'SECRET'
+    })
+    const published = auditConfiguration(options)
+    expect(options.auditEnabled).toBe(true)
+    expect(published).toMatchObject({ schemaVersion: 1, cookieName: 'choice', cookieVersion: 3, cookiesPageUrl: '/cookies' })
+    expect(published.cookies).toContainEqual({ name: 'generated', categoryId: 'analytics' })
+    expect(published.cookies).toContainEqual(expect.objectContaining({ match: '_ga_*' }))
+    expect(JSON.stringify(published)).not.toMatch(/PRIVATE|SECRET|getNonce|csp/)
+  })
+
   it('uses the request translator for built-in and custom cookie copy with literal fallback', async () => {
     const options = resolveOptions({
       tags: [googleAnalytics({ measurementId: 'G-ABC123' })],

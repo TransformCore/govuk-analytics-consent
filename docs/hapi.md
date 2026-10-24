@@ -9,7 +9,7 @@ Choose the security recipes you need and register consent only once, combining t
 into the same configuration. All registration options are listed in the [reference](../README.md#options).
 
 ```sh
-npm install @transform-uk/govuk-analytics-consent @hapi/hapi @hapi/vision nunjucks govuk-frontend
+npm install govuk-analytics-consent @hapi/hapi @hapi/vision nunjucks govuk-frontend
 # Optional security middleware used below:
 npm install blankie @hapi/scooter @hapi/crumb hapi-rate-limit
 ```
@@ -20,8 +20,8 @@ Install the [package](../README.md#install), set `GTM_CONTAINER_ID=GTM-XXXXXXX`,
 package templates to your Nunjucks search paths:
 
 ```js
-import consentPlugin from '@transform-uk/govuk-analytics-consent/hapi'
-import { govukAnalyticsConsentTemplatePath } from '@transform-uk/govuk-analytics-consent'
+import consentPlugin from 'govuk-analytics-consent/hapi'
+import { govukAnalyticsConsentTemplatePath } from 'govuk-analytics-consent'
 
 const searchPaths = [govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-frontend/dist', 'src/views']
 
@@ -62,8 +62,8 @@ The package does not set CSP headers itself; `consent.blankieCsp` merges GTM and
 ```js
 import Blankie from 'blankie'
 import Scooter from '@hapi/scooter'
-import consentPlugin from '@transform-uk/govuk-analytics-consent/hapi'
-import { createGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+import consentPlugin from 'govuk-analytics-consent/hapi'
+import { createGovUkAnalyticsConsent } from 'govuk-analytics-consent'
 
 const consent = createGovUkAnalyticsConsent({ tags: ['google-analytics'] })
 
@@ -99,7 +99,7 @@ provide the generated crumb to both consent forms:
 
 ```js
 import Crumb from '@hapi/crumb'
-import consentPlugin from '@transform-uk/govuk-analytics-consent/hapi'
+import consentPlugin from 'govuk-analytics-consent/hapi'
 
 await server.register({
   plugin: Crumb,
@@ -128,7 +128,7 @@ route per minute:
 
 ```js
 import rateLimit from 'hapi-rate-limit'
-import consentPlugin from '@transform-uk/govuk-analytics-consent/hapi'
+import consentPlugin from 'govuk-analytics-consent/hapi'
 
 await server.register({
   plugin: rateLimit,
