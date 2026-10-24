@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import Hapi from '@hapi/hapi'
 import Inert from '@hapi/inert'
 import Vision from '@hapi/vision'

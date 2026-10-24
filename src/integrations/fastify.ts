@@ -1,6 +1,7 @@
 import fastifyPlugin from 'fastify-plugin'
 import type { FastifyPluginAsync, FastifyReply } from 'fastify'
 import { resolveInput, type GovUkAnalyticsConsentInput } from '../consent/create.js'
+import { auditConfiguration } from '../consent/audit.js'
 import { clientAsset } from './client-asset.js'
 import {
   consentRoutePaths,
@@ -24,6 +25,7 @@ export const govukAnalyticsConsentFastifyPlugin: FastifyPluginAsync<GovUkAnalyti
   async (fastify, options) => {
     const resolved = resolveInput(options)
     const paths = consentRoutePaths(resolved)
+    const auditPath = `${resolved.routePrefix}/audit.json`
 
     fastify.decorateRequest('govukAnalyticsConsent', null as unknown as ConsentRequestState)
     fastify.decorateRequest('govukAnalyticsConsentContext', null as unknown as ConsentContext)
@@ -47,6 +49,7 @@ export const govukAnalyticsConsentFastifyPlugin: FastifyPluginAsync<GovUkAnalyti
     })
 
     fastify.addHook('preHandler', async (request, reply) => {
+      if (resolved.auditEnabled && request.url.split('?')[0] === auditPath) return
       const currentPath = request.raw.url ?? '/'
       const returnUrl = readQueryParam(currentPath, 'returnUrl')
 
@@ -73,6 +76,11 @@ export const govukAnalyticsConsentFastifyPlugin: FastifyPluginAsync<GovUkAnalyti
 
       return payload
     })
+
+    if (resolved.auditEnabled) {
+      fastify.get(auditPath, async (_request, reply) =>
+        reply.header('cache-control', 'no-store').send(auditConfiguration(resolved)))
+    }
 
     fastify.get(paths.script, async (request, reply) => {
       const asset = clientAsset()

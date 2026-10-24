@@ -1,4 +1,5 @@
 import { resolveInput, type GovUkAnalyticsConsentInput } from '../consent/create.js'
+import { auditConfiguration } from '../consent/audit.js'
 import { clientAsset } from './client-asset.js'
 import {
   consentRoutePaths,
@@ -36,6 +37,13 @@ export function registerExpress(
 ): ResolvedOptions {
   const resolved = resolveInput(options)
   const paths = consentRoutePaths(resolved)
+
+  if (resolved.auditEnabled) {
+    app.get(`${resolved.routePrefix}/audit.json`, (_req: any, res: any) => {
+      res.set('cache-control', 'no-store')
+      res.json(auditConfiguration(resolved))
+    })
+  }
 
   app.use((req: any, res: any, next: (error?: unknown) => void) => {
     const requestConsent = createConsentRequestState(resolved, req.headers?.cookie, req.hostname)

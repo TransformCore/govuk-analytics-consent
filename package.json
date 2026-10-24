@@ -1,9 +1,12 @@
 {
-  "name": "@transform-uk/govuk-analytics-consent",
+  "name": "govuk-analytics-consent",
   "version": "0.3.1",
   "description": "Near zero-configuration GOV.UK cookie consent banner, Google Tag Manager loading and Google Consent Mode integration for Node.js services",
   "license": "MIT",
   "type": "module",
+  "workspaces": [
+    "packages/audit"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/TransformCore/govuk-analytics-consent.git"
@@ -48,7 +51,10 @@
     "src/ui/templates"
   ],
   "scripts": {
-    "build": "npm run build:server && npm run build:client",
+    "audit": "npm run build:audit && node packages/audit/dist/cli.js",
+    "build": "npm run clean && npm run build:server && npm run build:client && npm run build:audit",
+    "clean": "node --input-type=module -e \"import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true })\"",
+    "build:audit": "npm run build --workspace govuk-analytics-consent-audit",
     "build:server": "tsc -p tsconfig.build.json",
     "build:client": "esbuild src/client/index.ts --bundle --format=iife --minify --target=es2017 --outfile=dist/client/consent.js",
     "example:express": "npm run build && node examples/express/server.js",
@@ -56,7 +62,7 @@
     "example:fastify": "npm run build && node examples/fastify/server.js",
     "prepare": "npm run build",
     "prepublishOnly": "npm run typecheck && npm test",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && npm run typecheck --workspace govuk-analytics-consent-audit",
     "pretest": "npm run build:client",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -96,6 +102,7 @@
     "@types/supertest": "^6.0.2",
     "blankie": "^5.0.0",
     "csrf-sync": "^4.2.1",
+    "dotenv": "^18.0.9",
     "esbuild": "^0.28.2",
     "express": "^4.21.2",
     "express-session": "^1.19.0",

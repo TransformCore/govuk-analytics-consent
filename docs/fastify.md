@@ -9,7 +9,7 @@ options and register consent once. The [Fastify example](../examples/fastify/ser
 runnable alternative that renders Nunjucks directly without `@fastify/view`.
 
 ```sh
-npm install @transform-uk/govuk-analytics-consent fastify fastify-plugin @fastify/view nunjucks govuk-frontend
+npm install govuk-analytics-consent fastify fastify-plugin @fastify/view nunjucks govuk-frontend
 # Optional security middleware used below:
 npm install @fastify/helmet @fastify/cookie @fastify/csrf-protection @fastify/rate-limit
 ```
@@ -28,7 +28,7 @@ npm install --save fastify fastify-plugin
 
 ```js
 import Fastify from 'fastify'
-import consentPlugin from '@transform-uk/govuk-analytics-consent/fastify'
+import consentPlugin from 'govuk-analytics-consent/fastify'
 
 const app = Fastify()
 
@@ -73,8 +73,8 @@ Register `@fastify/helmet` before consent. `consent.helmetCsp` merges GTM and co
 ```js
 import Fastify from 'fastify'
 import helmet from '@fastify/helmet'
-import consentPlugin from '@transform-uk/govuk-analytics-consent/fastify'
-import { createGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+import consentPlugin from 'govuk-analytics-consent/fastify'
+import { createGovUkAnalyticsConsent } from 'govuk-analytics-consent'
 
 const app = Fastify()
 const consent = createGovUkAnalyticsConsent({ tags: ['google-analytics'] })
@@ -114,7 +114,7 @@ The form token is in the parsed request body, so validate in `preValidation`, no
 import Fastify from 'fastify'
 import cookie from '@fastify/cookie'
 import csrfProtection from '@fastify/csrf-protection'
-import consentPlugin from '@transform-uk/govuk-analytics-consent/fastify'
+import consentPlugin from 'govuk-analytics-consent/fastify'
 
 const app = Fastify()
 
@@ -152,7 +152,7 @@ consent:
 
 ```js
 import rateLimit from '@fastify/rate-limit'
-import consentPlugin from '@transform-uk/govuk-analytics-consent/fastify'
+import consentPlugin from 'govuk-analytics-consent/fastify'
 
 await app.register(rateLimit, { max: 120, timeWindow: '1 minute' })
 await app.register(consentPlugin)

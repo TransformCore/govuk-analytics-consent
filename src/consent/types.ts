@@ -144,6 +144,7 @@ export interface GovUkAnalyticsConsentOptions {
   cookieName?: string
   cookieVersion?: number
   routePrefix?: string
+  auditEnabled?: boolean
   /** Rendered as the banner's "View cookies" link only when supplied. */
   cookiesPageUrl?: string
   /** Consent Mode `wait_for_update` in ms. `false` or `0` omits the property. */
@@ -201,6 +202,7 @@ export interface ResolvedOptions {
   cookieName: string
   cookieVersion: number
   routePrefix: string
+  auditEnabled: boolean
   cookiesPageUrl: string | null
   consentWaitForUpdate: number | null
   categories: CookieCategory[]

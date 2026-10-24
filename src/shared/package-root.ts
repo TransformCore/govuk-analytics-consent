@@ -21,7 +21,7 @@ export function packageRoot(): string {
     const parent = dirname(current)
 
     if (parent === current) {
-      throw new Error('Unable to locate the @transform-uk/govuk-analytics-consent package root')
+      throw new Error('Unable to locate the govuk-analytics-consent package root')
     }
 
     current = parent

@@ -25,7 +25,7 @@ export function clientAsset(): ClientAsset {
     body = readFileSync(path, 'utf8')
   } catch {
     throw new Error(
-      `Missing browser bundle at ${path}. Run "npm run build:client" in @transform-uk/govuk-analytics-consent.`
+      `Missing browser bundle at ${path}. Run "npm run build:client" in govuk-analytics-consent.`
     )
   }
 
