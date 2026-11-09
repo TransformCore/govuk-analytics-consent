@@ -31,6 +31,13 @@ Chromium binaries are cached separately from npm packages. Repeat browser setup 
 upgrade requires a new browser revision. Browsers are never downloaded automatically; missing
 binaries produce installation guidance and exit code `2`.
 
+The audit always keeps the browser sandbox enabled. It prefers Playwright Chromium, then tries
+installed Google Chrome Stable if Chromium is missing or reports a sandbox failure. Linux runners
+need a non-root user and browser system dependencies. Ubuntu 23.10+ may restrict Chromium's user
+namespaces through AppArmor; this is a host policy and can also affect Ubuntu-based CI containers.
+Install Chrome as below or use a scoped `userns` profile as described in
+[Chromium's AppArmor guidance](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md).
+
 ## Options
 
 ```sh
@@ -198,22 +205,26 @@ choices and withdrawal are not checked. Omit `categories`, `cookiesPage`, `cooki
 
 ## Scheduled CI checks
 
-Use the same `npx` commands in a scheduled job, adding `--yes` to avoid installation prompts:
+On GitHub Actions with `ubuntu-latest`, install only Chrome Stable and its system dependencies,
+then run the audit. On a fresh runner, the CLI will use Chrome because Playwright Chromium is not
+installed. Add `--yes` to avoid `npx` prompts:
 
-```sh
-npx --yes --package=govuk-analytics-consent-audit playwright install chromium
-npx --yes govuk-analytics-consent-audit --url https://service.example.gov.uk --output report.json
+```yaml
+- name: Install audit browser
+  run: npx --yes --package=govuk-analytics-consent-audit playwright install --with-deps chrome
+
+- name: Audit cookies
+  run: npx --yes govuk-analytics-consent-audit --url https://service.example.gov.uk --output report.json
 ```
 
-Pin the same published package version in both commands for repeatable runs, and retain the
-report even when the command fails. Choose representative pages and an observation window
-appropriate for the service.
+The same approach works on other Ubuntu 23.10+ CI hosts and containers affected by the host's
+AppArmor policy. If Chromium is installed and its sandbox works, the CLI prefers it; otherwise it
+tries Chrome Stable. The JSON report records which browser ran. Pin the same published package
+version in both commands, retain the report on failure, and choose representative pages and
+observation windows.
 
-Chromium runs with sandboxing enabled. Containers and CI need a non-root user, sandbox support
-and the browser's system dependencies. On suitably provisioned Linux runners, install these
-with `npx --package=govuk-analytics-consent-audit playwright install --with-deps chromium`.
-Use a low-privilege environment with appropriate network access: live pages execute third-party
-JavaScript.
+Use a low-privilege environment with appropriate network access because live pages execute
+third-party JavaScript. Do not disable Chromium's sandbox.
 
 For lockfile-managed tooling, local installation is an alternative:
 
@@ -228,7 +239,7 @@ Then run the CLI through an npm script. CI should use `npm ci` including develop
 
 Results cover only the selected pages, anonymous journeys, Chromium and the observation windows.
 Short-lived cookies, delayed scripts, browser blocking, service workers, geography and conditional
-journeys can affect what is observed. An observed `Set-Cookie` header is not proof of storage.
+journeys can affect what is observed.
 
 The audit does not crawl, log in, exercise other application forms, inspect local/session storage,
 classify tracking requests or validate Consent Mode signals. It uses live third-party scripts

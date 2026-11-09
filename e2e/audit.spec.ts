@@ -439,26 +439,33 @@ test('compiled CLI writes redacted JSON and returns success, failure and incompl
     let unavailableStdout = ''
     let unavailableStderr = ''
     try {
-      await execute(process.execPath, ['packages/audit/dist/cli.js', 'audit', '--config', configuration, '--output', output], {
+      const result = await execute(process.execPath, ['packages/audit/dist/cli.js', 'audit', '--config', configuration, '--output', output], {
         env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: join(directory, 'no-browsers') }
       })
+      unavailableStdout = result.stdout
+      unavailableStderr = result.stderr
     } catch (error) {
       const result = error as { code: number; stdout: string; stderr: string }
       unavailableCode = result.code
       unavailableStdout = result.stdout
       unavailableStderr = result.stderr
     }
-    expect(unavailableCode).toBe(2)
-    expect(unavailableStdout).toContain('Cookie audit incomplete')
-    expect(unavailableStdout).toContain('Chromium could not start. Install it manually with:')
-    expect(unavailableStdout).toContain('npx --package=govuk-analytics-consent-audit playwright install chromium')
     expect(unavailableStdout).not.toMatch(/^\s+at\s/m)
     expect(unavailableStderr).toBe('')
     expect(await readdir(directory)).not.toContain('no-browsers')
     const unavailable = JSON.parse(await readFile(output, 'utf8'))
-    expect(unavailable.status).toBe('incomplete')
-    expect(unavailable.scenarios).toEqual([])
-    expect(unavailable.findings[0].code).toContain('browser-unavailable')
+    if (unavailableCode === 2) {
+      expect(unavailableStdout).toContain('Install a browser with:')
+      expect(unavailableStdout).toContain('Cookie audit incomplete')
+      expect(unavailable.status).toBe('incomplete')
+      expect(unavailable.scenarios).toEqual([])
+      expect(unavailable.findings[0].code).toContain('browser-unavailable')
+    } else {
+      expect(unavailableCode).toBe(0)
+      expect(unavailableStdout).toContain('Google Chrome Stable')
+      expect(unavailable.browser).toBe('chrome')
+      expect(unavailable.status).toBe('passed')
+    }
   } finally {
     await rm(directory, { recursive: true, force: true })
   }

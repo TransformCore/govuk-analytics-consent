@@ -3,7 +3,7 @@ import { chmod, link, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile }
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { EventEmitter } from 'node:events'
-import type { BrowserContext } from 'playwright'
+import type { Browser, BrowserContext } from 'playwright'
 import { cookieProblem, matchingDeclarations, parseAuditConfig, sameCookie } from '../src/policy.js'
 import { responseCookie, runAudit } from '../src/runner.js'
 import { chromium } from 'playwright'
@@ -245,14 +245,36 @@ describe('audit browser launch', () => {
     expect(JSON.stringify(report)).not.toContain('PRIVATE')
   })
 
-  it('reports a missing browser without trying to launch or install it', async () => {
-    vi.spyOn(chromium, 'executablePath').mockReturnValue('/no/such/consent-audit-chromium')
+  it('tries sandboxed Chrome Stable when Chromium reports a sandbox failure', async () => {
+    vi.spyOn(chromium, 'executablePath').mockReturnValue(process.execPath)
+    const browser = {
+      version: () => 'Chrome 140',
+      newContext: vi.fn().mockRejectedValue(new Error('stop after browser selection')),
+      close: vi.fn().mockResolvedValue(undefined)
+    } as unknown as Browser
     const launch = vi.spyOn(chromium, 'launch')
+      .mockRejectedValueOnce(new Error('Chromium sandboxing failed! No usable sandbox!'))
+      .mockResolvedValueOnce(browser)
+    const messages: string[] = []
+
+    const report = await runAudit(parseAuditConfig(input), { onProgress: (message) => messages.push(message) })
+
+    expect(launch).toHaveBeenNthCalledWith(1, { chromiumSandbox: true })
+    expect(launch).toHaveBeenNthCalledWith(2, { channel: 'chrome', chromiumSandbox: true })
+    expect(report.browser).toBe('chrome')
+    expect(report.browserVersion).toBe('Chrome 140')
+    expect(report.limitations).toEqual(expect.arrayContaining([expect.stringContaining('Google Chrome Stable')]))
+    expect(messages).toContain('Chromium sandbox is unavailable; trying installed Google Chrome Stable...')
+  })
+
+  it('reports when neither Playwright Chromium nor Chrome Stable can launch', async () => {
+    vi.spyOn(chromium, 'executablePath').mockReturnValue('/no/such/consent-audit-chromium')
+    const launch = vi.spyOn(chromium, 'launch').mockRejectedValue(new Error('Chrome executable not found'))
     const report = await runAudit(parseAuditConfig(input))
-    expect(launch).not.toHaveBeenCalled()
+    expect(launch).toHaveBeenCalledExactlyOnceWith({ channel: 'chrome', chromiumSandbox: true })
     expect(report.status).toBe('incomplete')
     expect(report.findings[0]?.code).toContain('browser-unavailable')
-    expect(report.findings[0]?.code).toContain('Install it manually')
+    expect(report.findings[0]?.code).toContain('Install a browser with')
   })
 })
 

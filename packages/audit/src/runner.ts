@@ -35,6 +35,7 @@ export interface AuditReport {
   origin: string
   startedAt: string
   finishedAt: string
+  browser?: 'chromium' | 'chrome'
   browserVersion?: string
   status: 'passed' | 'failed' | 'incomplete'
   pages: number
@@ -116,6 +117,11 @@ function bannerControl(page: Page, config: AuditConfig, action: 'accept' | 'reje
   return page.locator('.govuk-cookie-banner').getByRole('button', { name })
 }
 
+function isSandboxFailure(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return /No usable sandbox|Chromium sandboxing failed/i.test(message)
+}
+
 export async function runAudit(config: AuditConfig, options: AuditRunOptions = {}): Promise<AuditReport> {
   const progress = options.onProgress ?? (() => {})
   const report: AuditReport = {
@@ -137,13 +143,30 @@ export async function runAudit(config: AuditConfig, options: AuditRunOptions = {
   try {
     progress('Launching Chromium...')
     const { chromium } = await import('playwright')
-    if (!existsSync(chromium.executablePath())) {
-      throw new AuditError('browser-unavailable: Chromium could not start. Install it manually with: npx --package=govuk-analytics-consent-audit playwright install chromium')
+    const chromiumInstalled = existsSync(chromium.executablePath())
+    if (chromiumInstalled) {
+      try {
+        browser = await chromium.launch({ chromiumSandbox: true })
+        report.browser = 'chromium'
+      } catch (error) {
+        if (!isSandboxFailure(error)) {
+          throw new AuditError('browser-launch-failed: Chromium could not start with sandboxing enabled. Check browser system dependencies and sandbox support; use a non-root user in a suitably configured container.')
+        }
+        progress('Chromium sandbox is unavailable; trying installed Google Chrome Stable...')
+      }
+    } else {
+      progress('Playwright Chromium is not installed; trying installed Google Chrome Stable...')
     }
-    try {
-      browser = await chromium.launch({ chromiumSandbox: true })
-    } catch {
-      throw new AuditError('browser-launch-failed: Chromium could not start with sandboxing enabled. Check browser system dependencies and sandbox support; use a non-root user in a suitably configured container.')
+    if (browser === undefined) {
+      try {
+        browser = await chromium.launch({ channel: 'chrome', chromiumSandbox: true })
+        report.browser = 'chrome'
+        report.limitations.push('Google Chrome Stable was used because Playwright Chromium was unavailable or its sandbox could not start.')
+      } catch {
+        throw new AuditError(chromiumInstalled
+          ? 'browser-launch-failed: Chromium sandbox could not start and Google Chrome Stable was unavailable or could not start. Install Chrome with: npx --package=govuk-analytics-consent-audit playwright install --with-deps chrome'
+          : 'browser-unavailable: Install a browser with: npx --package=govuk-analytics-consent-audit playwright install chromium or npx --package=govuk-analytics-consent-audit playwright install --with-deps chrome')
+      }
     }
     report.browserVersion = browser.version()
     const scenarios = ['no-choice', 'reject-all', 'accept-all',
