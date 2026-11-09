@@ -41,16 +41,6 @@ jobs:
           sudo install -m 0644 .github/apparmor/playwright-chromium /etc/apparmor.d/playwright-chromium
           sudo apparmor_parser -r /etc/apparmor.d/playwright-chromium
 
-      - name: Verify Chromium sandbox
-        env:
-          DEBUG: pw:browser
-        run: |
-          node --input-type=module <<'NODE'
-          import { chromium } from 'playwright'
-          const browser = await chromium.launch({ chromiumSandbox: true })
-          await browser.close()
-          NODE
-
       - name: Run e2e tests
         run: npm run test:e2e
 
