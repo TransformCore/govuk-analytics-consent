@@ -67,7 +67,7 @@ export function createCookieObserver(
     if (problem !== undefined && (source === 'browser' || problem === 'undeclared-cookie' || ignored)) {
       addFinding({
         code: ignored || source === 'browser' ? problem : 'undeclared-set-cookie-attempt',
-        severity: ignored ? 'info' : source === 'browser' ? 'failure' : 'warning', scenario, ...location, cookie,
+        severity: ignored ? 'info' : 'failure', scenario, ...location, cookie,
         ...(ignored ? { ignorePattern: matchingIgnorePattern(cookie.name, config.ignoreCookies) } : {})
       })
     }
