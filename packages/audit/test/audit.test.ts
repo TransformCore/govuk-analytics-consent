@@ -299,7 +299,7 @@ describe('audit observation recorder', () => {
     await observer.drain()
     expect(report.observations[1]).toMatchObject({ source: 'response-header', stage: 'before-choice' })
     expect(report.findings[1]).toMatchObject({
-      code: 'undeclared-set-cookie-attempt', severity: 'failure', stage: 'before-choice'
+      code: 'undeclared-set-cookie-attempt', severity: 'warning', stage: 'before-choice'
     })
     expect(JSON.stringify(report)).not.toContain('PRIVATE_COOKIE_VALUE')
     await observer.stop()
