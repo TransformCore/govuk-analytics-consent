@@ -1,7 +1,7 @@
 # Auditing deployed cookies
 
 Use `govuk-analytics-consent-audit` to check cookies observed on your service against its
-declared cookies. The audit visits selected pages in fresh Chromium sessions before a consent
+declared cookies. The audit visits selected pages in fresh browser sessions before a consent
 choice, after rejecting optional cookies and after accepting them. Cookies must be declared
 even after acceptance.
 
@@ -224,7 +224,7 @@ version in both commands, retain the report on failure, and choose representativ
 observation windows.
 
 Use a low-privilege environment with appropriate network access because live pages execute
-third-party JavaScript. Do not disable Chromium's sandbox.
+third-party JavaScript. Do not disable the browser sandbox.
 
 For lockfile-managed tooling, local installation is an alternative:
 
@@ -237,7 +237,7 @@ Then run the CLI through an npm script. CI should use `npm ci` including develop
 
 ## Coverage limits
 
-Results cover only the selected pages, anonymous journeys, Chromium and the observation windows.
+Results cover only the selected pages, anonymous journeys, the selected browser and observation windows.
 Short-lived cookies, delayed scripts, browser blocking, service workers, geography and conditional
 journeys can affect what is observed.
 

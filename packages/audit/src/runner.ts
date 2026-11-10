@@ -132,7 +132,7 @@ export async function runAudit(config: AuditConfig, options: AuditRunOptions = {
     ...(config.ignoreCookies?.length ? { ignoreCookies: [...config.ignoreCookies] } : {}),
     status: 'incomplete', pages: config.pages.length, scenarios: [], builtInDeclarations: [], observations: [], findings: [],
     limitations: [
-      'Observations cover only the configured anonymous pages, Chromium and observation windows; this is not legal certification.',
+      'Observations cover only the configured anonymous pages, selected browser and observation windows; this is not legal certification.',
       'Browser snapshots can miss short-lived JavaScript cookies. Response headers show attempts, not proof of storage.',
       'Browser privacy settings, third-party blocking, service workers, geography and conditional journeys can limit coverage.',
       'Network tracking policy, other storage and JavaScript-disabled journeys are not checked.',

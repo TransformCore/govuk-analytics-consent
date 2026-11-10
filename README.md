@@ -21,12 +21,9 @@ Source: https://github.com/TransformCore/govuk-analytics-consent
 npm install --save govuk-analytics-consent
 ```
 
-The optional [cookie audit CLI](docs/auditing.md) is a separate development package,
-`govuk-analytics-consent-audit`, run directly with `npx` without a local installation.
-Enable `auditEnabled: true` on your server and
-point the tool at its URL; it reads the deployed declarations without importing application code.
-On Ubuntu, the CLI can fall back to installed Chrome when bundled Chromium cannot use its sandbox.
-The application library does not include browser tooling; see the guide for CI setup.
+The optional [cookie audit CLI](docs/auditing.md) is a separate development package that runs
+with `npx`. Enable `auditEnabled: true` on your server and point the CLI at its URL; it reads the
+deployed cookie declarations. See the guide for setup and CI instructions.
 
 ## Quick start
 
@@ -54,7 +51,7 @@ service uses; without a configured GTM container ID, it runs un-instrumented.
 | [Fastify](docs/fastify.md) | Plugin ordering, explicit view context, Helmet CSP, signed-cookie CSRF, and handler access |
 | [Templates](docs/templates.md) | GOV.UK template inheritance, manual macros, and host-provided CSP nonce locals |
 | [Localisation](docs/localisation.md) | Language selection, nested messages, per-request translators, and custom cookie/tag copy |
-| [Cookie auditing](docs/auditing.md) | Optional sandboxed Chromium CLI for undeclared-cookie and category checks |
+| [Cookie auditing](docs/auditing.md) | Optional sandboxed browser CLI for undeclared-cookie and category checks |
 | [Options](#options) | Complete registration options, defaults, and callback contracts |
 | [Development](#development) | Runnable examples, builds, and test commands |
 

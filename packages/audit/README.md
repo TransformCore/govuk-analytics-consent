@@ -13,8 +13,8 @@ npx govuk-analytics-consent-audit --url https://service.example.gov.uk --output 
 Pin the same package version for both commands in repeatable or unattended runs. Browser binaries
 are cached separately and are not downloaded automatically.
 
-Chromium always runs with its sandbox enabled. On Ubuntu, the audit tries installed Chrome Stable
-if bundled Chromium is unavailable or cannot start its sandbox. For CI, install Chrome with
+The browser always runs with its sandbox enabled. On Ubuntu, the audit tries installed Chrome
+Stable if bundled Chromium is unavailable or cannot start its sandbox. For CI, install Chrome with
 `npx --package=govuk-analytics-consent-audit playwright install --with-deps chrome`. See the
 [full guide](https://github.com/TransformCore/govuk-analytics-consent/blob/main/docs/auditing.md#scheduled-ci-checks)
 for setup details.
