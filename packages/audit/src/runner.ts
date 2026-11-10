@@ -60,6 +60,7 @@ export function auditExitCode(report: AuditReport): number {
 
 async function metadata(page: Page, config: AuditConfig): Promise<Metadata> {
   const scripts = page.locator('script[data-module="govuk-analytics-consent"]')
+  // Read the integration's published metadata and reject mismatches with any local overrides.
   if (await scripts.count() !== 1) throw new AuditError('missing-or-ambiguous-consent-metadata')
   const data = await scripts.evaluate((element) => ({
     name: element.getAttribute('data-cookie-name'),
@@ -92,6 +93,7 @@ async function metadata(page: Page, config: AuditConfig): Promise<Metadata> {
 async function verifyChoice(
   context: BrowserContext, config: AuditConfig, meta: Metadata, accepted: string[], currentUrl = config.url
 ): Promise<void> {
+  // The form redirect can finish before the consent cookie is visible, so poll for the exact saved state.
   const deadline = Date.now() + config.timeoutMs
   do {
     const cookies = await context.cookies(currentUrl)
@@ -118,6 +120,7 @@ function bannerControl(page: Page, config: AuditConfig, action: 'accept' | 'reje
 }
 
 function isSandboxFailure(error: unknown): boolean {
+  // Only known sandbox failures may switch browsers; unrelated launch errors should stay visible as failures.
   const message = error instanceof Error ? error.message : String(error)
   return /No usable sandbox|Chromium sandboxing failed/i.test(message)
 }
@@ -144,6 +147,7 @@ export async function runAudit(config: AuditConfig, options: AuditRunOptions = {
     progress('Launching Chromium...')
     const { chromium } = await import('playwright')
     const chromiumInstalled = existsSync(chromium.executablePath())
+    // Keep sandboxing on for both browsers; Chrome is a fallback for missing Chromium or its known sandbox denial.
     if (chromiumInstalled) {
       try {
         browser = await chromium.launch({ chromiumSandbox: true })
@@ -169,6 +173,7 @@ export async function runAudit(config: AuditConfig, options: AuditRunOptions = {
       }
     }
     report.browserVersion = browser.version()
+    // Each journey gets an isolated context so consent and cookies cannot leak between scenarios.
     const scenarios = ['no-choice', 'reject-all', 'accept-all',
       ...(config.categories?.filter((category) => !category.essential).map((category) => `category:${category.id}`) ?? []),
       ...(config.categories !== undefined ? ['withdraw-all'] : [])]
@@ -302,6 +307,7 @@ export async function runAudit(config: AuditConfig, options: AuditRunOptions = {
       report.findings.push({ code: 'browser-cleanup-failed', severity: 'error', scenario: 'cleanup', stage: 'cleanup', page: 0 })
     }
     report.finishedAt = new Date().toISOString()
+    // Incomplete execution takes precedence over policy failures; only confirmed failures mark the audit failed.
     report.status = report.findings.some((finding) => finding.severity === 'error') ? 'incomplete'
       : report.findings.some((finding) => finding.severity === 'failure') ? 'failed' : 'passed'
   }

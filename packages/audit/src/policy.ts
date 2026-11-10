@@ -1,4 +1,5 @@
 function matchesGlob(name: string, glob: string): boolean {
+  // Match literal segments around '*' directly instead of expanding patterns into regular expressions.
   if (/[=;\s]/.test(name)) return false
   const parts = glob.split(/\*+/)
   const prefix = parts[0]!
@@ -80,6 +81,7 @@ export function isInternalPath(value: unknown, origin: string): value is string 
 }
 
 export function parseAuditConfig(input: unknown): AuditConfig {
+  // Validate and normalize this boundary because configuration can come from files or a remote endpoint.
   if (!object(input)) throw new Error('Audit configuration must be an object')
   keys(input, ['mode', 'url', 'pages', 'cookies', 'categories', 'cookiesPage', 'observationMs', 'timeoutMs', 'cookieName', 'cookieVersion', 'ignoreCookies', 'banner'])
   const mode = input.mode ?? 'library'
@@ -217,6 +219,7 @@ export function cookieProblem(
   accepted: string[],
   consentCookie?: CookieIdentity
 ): 'undeclared-cookie' | 'ignored-undeclared-cookie' | 'category-not-consented' | 'ambiguous-category' | undefined {
+  // Match full cookie scope first; ignore patterns exempt only undeclared cookies, never consent violations.
   if (consentCookie !== undefined && sameCookie(cookie, consentCookie)) return undefined
   const matches = matchingDeclarations(cookie, config.cookies)
   if (matches.length === 0) {

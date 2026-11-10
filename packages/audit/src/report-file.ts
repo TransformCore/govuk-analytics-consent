@@ -3,6 +3,7 @@ import { dirname, join, resolve } from 'node:path'
 import type { AuditReport } from './runner.js'
 
 export async function checkReportPath(output: string, configuration?: string): Promise<void> {
+  // Reject symlinks and hard-link aliases so a report cannot replace its own configuration.
   const target = await lstat(output).catch((error: NodeJS.ErrnoException) => {
     if (error.code !== 'ENOENT') throw error
     return undefined
@@ -20,6 +21,7 @@ export async function checkReportPath(output: string, configuration?: string): P
 export async function writeAuditReport(output: string, report: AuditReport, configuration?: string): Promise<void> {
   const destination = resolve(output)
   await checkReportPath(destination, configuration)
+  // Write beside the destination, then recheck before atomic replacement to avoid partial reports and path races.
   const temporaryDirectory = await mkdtemp(join(dirname(destination), '.consent-audit-'))
   try {
     const temporaryFile = join(temporaryDirectory, 'report.json')

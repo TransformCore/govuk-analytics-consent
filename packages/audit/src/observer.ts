@@ -55,6 +55,7 @@ export function createCookieObserver(
       report.findings.push(finding)
     }
   }
+  // Header evidence records an attempt; browser snapshots confirm storage, so both sources matter.
   const record = (cookie: CookieIdentity, source: CookieObservation['source'], location: { stage: string; page: number | 'cookies' }, accepted: string[]): void => {
     const observation: CookieObservation = { ...cookie, source, scenario, ...location }
     const key = JSON.stringify(observation)
@@ -79,6 +80,7 @@ export function createCookieObserver(
   const onResponse = (response: Response): void => {
     const { stage, page } = requests.get(response.request()) ?? getState()
     const location = { stage, page }
+    // Serialize header parsing so drain/stop can await every response observation.
     pending = pending.then(async () => {
       for (const header of await response.headersArray()) {
         if (header.name.toLowerCase() !== 'set-cookie') continue
