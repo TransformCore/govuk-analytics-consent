@@ -478,15 +478,57 @@ For a first Playwright run, install its browser with `npx playwright install chr
 command manages its own servers; you do not need to start an example server first. To run one
 Vitest file, use `npx vitest run test/html.test.ts`.
 
-## Publishing
-
-The package is published as a public npm package. The `prepare` script builds `dist`,
-and `prepublishOnly` runs type checking and tests before publishing.
-
-```sh
-npm publish --access public
-```
-
 Tests cover the pure consent/cookie logic, Consent Mode snippet generation and injection
 safety, the Nunjucks macros against the shared HTML builders, the browser manager under jsdom,
 and all three framework integrations end to end.
+
+## Publishing
+
+The root library (`govuk-analytics-consent`) and audit CLI (`govuk-analytics-consent-audit`) are
+separate public npm packages. Run these steps from the repository root with Node.js 20 or newer:
+
+1. Check that the release is on the intended commit, CI passes, and you are authenticated to
+   the intended registry with permission to publish both package names:
+
+   ```sh
+   npm whoami
+   npm config get registry
+   ```
+
+2. Check each package's version in its `package.json` against the intended registry. Published
+   versions cannot be reused. The packages are versioned independently; if you want matching
+   versions, set the same explicit version for both and update `package-lock.json`. For example:
+
+   ```sh
+   npm version 0.3.2 --workspaces --include-workspace-root --no-git-tag-version --allow-same-version
+   ```
+
+   Choose the appropriate version rather than copying the example. Review and commit version and
+   lockfile changes before publishing. A `404` from `npm view <package-name> version` can mean a
+   first publish, but also check your registry and permissions.
+
+3. Run the release checks and inspect the files that will be included in both packages:
+
+   ```sh
+   npm run typecheck
+   npm test
+   npm run test:e2e
+   npm run build
+   npm pack --dry-run
+   npm pack --dry-run --workspace=govuk-analytics-consent-audit
+   ```
+
+   The E2E command requires Playwright's browser and any platform dependencies. `npm pack
+   --dry-run` does not publish; build first because the audit package's build runs during
+   `prepublishOnly`, not `prepare`.
+
+4. Publish each package separately:
+
+   ```sh
+   npm publish --access public
+   npm publish --workspace=govuk-analytics-consent-audit --access public
+   ```
+
+   The root package's `prepublishOnly` runs type checking and tests, and `prepare` builds it.
+   The audit package's `prepublishOnly` runs its own typecheck, tests and build. Complete any npm
+   authentication or two-factor requirements, then verify both published versions with `npm view`.
