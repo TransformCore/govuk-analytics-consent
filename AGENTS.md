@@ -14,5 +14,6 @@
 
 - Keep changes focused; avoid editing generated `dist` output directly.
 - Add or update tests for behavioral changes and keep documentation aligned with the public types and runtime behavior.
+- Keep the built-in key reference in `docs/localisation.md` up to date when message keys are added or changed.
 - Run `npm run typecheck` and the narrowest relevant tests after changes. Before completion, run `npm test` and `git diff --check` when feasible.
 - For changes to examples, run the relevant `npm run example:*` command and verify security-sensitive behavior such as nonce/header agreement and CSRF rejection/acceptance.
