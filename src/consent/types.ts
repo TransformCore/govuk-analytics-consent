@@ -61,15 +61,23 @@ export interface CookieDefinition {
   removeOnReject?: CookieRemoval
 }
 
+export type CookieExpiryUnit = 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year'
+export type CookieExpiry = { value: 'session' } | { value: number; unit: CookieExpiryUnit }
+
+/** Cookie input must provide a literal value or a translation key for each required field. */
+export type CookieDefinitionOptions = Omit<CookieDefinition, 'purpose' | 'expiry'> &
+  ({ purpose: string; purposeKey?: string } | { purpose?: string; purposeKey: string }) &
+  ({ expiry: string | CookieExpiry; expiryKey?: string } | { expiry?: string | CookieExpiry; expiryKey: string })
+
 export interface TagDescription {
   categoryId: string
   text: string
 }
 
 export type TranslateMessage = (key: string, fallback?: string, values?: Record<string, string>) => string
-export type CookieDefinitionFactory = (messages: ConsentMessages, translate: TranslateMessage) => CookieDefinition[]
+export type CookieDefinitionFactory = (messages: ConsentMessages, translate: TranslateMessage) => CookieDefinitionOptions[]
 
-export type CookieDefinitionInput = CookieDefinition | CookieDefinitionFactory
+export type CookieDefinitionInput = CookieDefinitionOptions | CookieDefinitionFactory
 
 /** Host logger contract, compatible with console and common structured loggers. */
 export interface Logger {
@@ -104,6 +112,10 @@ export interface ConsentMessages {
     yes: string
     no: string
     consent: { purpose: string }
+    expiry: { session: string }
+    session: { purpose: string }
+    csrf: { purpose: string }
+    language: { purpose: string }
     table: { name: string; purpose: string; expiry: string }
   }
   categories: Record<'essential' | 'analytics' | 'advertising' | 'functionality' | 'personalization', {
@@ -139,11 +151,12 @@ export interface ConsentMessages {
 }
 
 export interface GovUkAnalyticsConsentOptions {
-  /** Defaults to `process.env.GTM_CONTAINER_ID`. */
+  /** Defaults to `GTM_CONTAINER_ID`, then `GOOGLE_TAG_MANAGER_KEY`. */
   gtmContainerId?: string
   cookieName?: string
   cookieVersion?: number
   routePrefix?: string
+  auditEnabled?: boolean
   /** Rendered as the banner's "View cookies" link only when supplied. */
   cookiesPageUrl?: string
   /** Consent Mode `wait_for_update` in ms. `false` or `0` omits the property. */
@@ -201,6 +214,7 @@ export interface ResolvedOptions {
   cookieName: string
   cookieVersion: number
   routePrefix: string
+  auditEnabled: boolean
   cookiesPageUrl: string | null
   consentWaitForUpdate: number | null
   categories: CookieCategory[]

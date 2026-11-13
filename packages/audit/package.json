@@ -1,0 +1,34 @@
+{
+  "name": "govuk-analytics-consent-audit",
+  "version": "0.1.0",
+  "description": "Development CLI to audit declared cookies on services using govuk-analytics-consent",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TransformCore/govuk-analytics-consent.git",
+    "directory": "packages/audit"
+  },
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=20" },
+  "bin": { "govuk-analytics-consent-audit": "./dist/cli.js" },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run test",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "playwright": "^1.63.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0"
+  }
+}

@@ -2,12 +2,14 @@ import { buildCategoryPreset, buildDefaultCategories } from './categories.js'
 import { defaultCookieDefinitions } from './default-cookies.js'
 import { globToPattern } from './removal.js'
 import { normaliseRoutePrefix, safeInternalPath } from '../shared/url.js'
+import { formatCookieExpiry } from '../shared/duration.js'
 import { gtmCspDirectives, mergeCspDirectives } from '../tags/csp.js'
 import { resolveTag } from '../tags/presets.js'
 import { resolveGtmRestrictions } from '../gtm/restrictions.js'
 import { MESSAGE_PREFIX, createMessageResolver, resolveMessages } from './messages.js'
 import type {
   CookieDefinition,
+  CookieDefinitionOptions,
   CookieRemoval,
   GovUkAnalyticsConsentOptions,
   ResolvedOptions
@@ -28,7 +30,10 @@ export const defaults = {
 } as const
 
 export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): ResolvedOptions {
-  const rawContainerId = options.gtmContainerId ?? process.env.GTM_CONTAINER_ID ?? ''
+  if (options.auditEnabled !== undefined && typeof options.auditEnabled !== 'boolean') {
+    throw new Error('auditEnabled must be a boolean')
+  }
+  const rawContainerId = options.gtmContainerId ?? process.env.GTM_CONTAINER_ID ?? process.env.GOOGLE_TAG_MANAGER_KEY ?? ''
   const gtmContainerId = rawContainerId.trim()
 
   if (gtmContainerId !== '' && !GTM_CONTAINER_ID_PATTERN.test(gtmContainerId)) {
@@ -84,7 +89,7 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
 
       return { tag, cookies: tag.cookies(messages, tagTranslate), tagTranslate }
     })
-    const cookies = resolveCookieDefinitions(options, tagCookies.flatMap(({ cookies }) => cookies), categories, { cookieName, cookieMaxAge, messages }, translate)
+    const cookies = resolveCookieDefinitions(options, tagCookies.flatMap(({ cookies }) => cookies), categories, { cookieName, cookieMaxAge, messages, language }, translate)
     const tagDescriptions = tagCookies.flatMap(({ tag, cookies, tagTranslate }) => {
       const categoryId = cookies[0]?.categoryId
       const text = typeof tag.description === 'function' ? tag.description(messages, tagTranslate) : tag.description
@@ -129,6 +134,7 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
     cookieName,
     cookieVersion,
     routePrefix: normaliseRoutePrefix(options.routePrefix ?? defaults.routePrefix),
+    auditEnabled: options.auditEnabled === true,
     cookiesPageUrl: resolveCookiesPageUrl(options.cookiesPageUrl),
     consentWaitForUpdate: resolveWaitForUpdate(options.consentWaitForUpdate),
     categories,
@@ -162,18 +168,19 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
 
 function resolveCookieDefinitions(
   options: GovUkAnalyticsConsentOptions,
-  tagCookies: CookieDefinition[],
+  tagCookies: CookieDefinitionOptions[],
   categories: ResolvedOptions['categories'],
   defaultsContext: {
     cookieName: string
     cookieMaxAge: number
     messages: ResolvedOptions['messages']
+    language: string
   },
   translate: (key: string, fallback?: string) => string
 ): CookieDefinition[] {
   const includeDefaults = options.includeDefaultCookies ?? true
   const defaults = includeDefaults ? defaultCookieDefinitions(defaultsContext) : []
-  const suppliedCookies: CookieDefinition[] = []
+  const suppliedCookies: CookieDefinitionOptions[] = []
 
   suppliedCookies.push(...tagCookies)
 
@@ -192,10 +199,12 @@ function resolveCookieDefinitions(
     if (
       typeof cookie.name !== 'string' ||
       cookie.name.trim() === '' ||
-      typeof cookie.purpose !== 'string' ||
-      cookie.purpose.trim() === '' ||
-      typeof cookie.expiry !== 'string' ||
-      cookie.expiry.trim() === '' ||
+      (cookie.purpose !== undefined && (typeof cookie.purpose !== 'string' || cookie.purpose.trim() === '')) ||
+      (typeof cookie.expiry === 'string' && cookie.expiry.trim() === '') ||
+      (cookie.purposeKey !== undefined && (typeof cookie.purposeKey !== 'string' || cookie.purposeKey.trim() === '')) ||
+      (cookie.expiryKey !== undefined && (typeof cookie.expiryKey !== 'string' || cookie.expiryKey.trim() === '')) ||
+      (cookie.purpose === undefined && cookie.purposeKey === undefined) ||
+      (cookie.expiry === undefined && cookie.expiryKey === undefined) ||
       category === undefined
     ) {
       throw new Error(`Invalid cookie definition: ${JSON.stringify(cookie)}`)
@@ -226,10 +235,19 @@ function resolveCookieDefinitions(
 
     const { purposeKey, expiryKey, providerKey, ...definition } = cookie
 
+    const purpose = purposeKey === undefined ? cookie.purpose : translate(purposeKey, cookie.purpose)
+    const expiryFallback = cookie.expiry === undefined || typeof cookie.expiry === 'string'
+      ? cookie.expiry
+      : formatCookieExpiry(cookie.expiry, defaultsContext.language, defaultsContext.messages.cookies.expiry.session)
+    const expiry = expiryKey === undefined ? expiryFallback : translate(expiryKey, expiryFallback)
+    if (typeof purpose !== 'string' || purpose.trim() === '' || typeof expiry !== 'string' || expiry.trim() === '') {
+      throw new Error(`Invalid cookie definition: ${JSON.stringify(cookie)}`)
+    }
+
     return {
       ...definition,
-      purpose: purposeKey === undefined ? cookie.purpose : translate(purposeKey, cookie.purpose),
-      expiry: expiryKey === undefined ? cookie.expiry : translate(expiryKey, cookie.expiry),
+      purpose,
+      expiry,
       provider: providerKey === undefined ? cookie.provider : translate(providerKey, cookie.provider ?? ''),
       removeOnReject
     }
@@ -239,9 +257,9 @@ function resolveCookieDefinitions(
 /** A user-supplied entry overrides a default with the same `name`. */
 function mergeCookieDefinitions(
   defaults: CookieDefinition[],
-  overrides: CookieDefinition[]
-): CookieDefinition[] {
-  const byName = new Map<string, CookieDefinition>()
+  overrides: CookieDefinitionOptions[]
+): CookieDefinitionOptions[] {
+  const byName = new Map<string, CookieDefinitionOptions>()
 
   for (const cookie of [...defaults, ...overrides]) {
     byName.set(cookie.name, cookie)

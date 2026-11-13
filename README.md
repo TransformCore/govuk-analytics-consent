@@ -1,4 +1,4 @@
-# @transform-uk/govuk-analytics-consent
+# govuk-analytics-consent
 
 Near zero-configuration GOV.UK cookie consent banner, including Google Tag Manager loading and Google
 Consent Mode integration for Node.js services. Built for Defra Hapi services, with first-class
@@ -11,15 +11,19 @@ Source: https://github.com/TransformCore/govuk-analytics-consent
 - Consent stored in a `govuk_analytics_consent` cookie
 - Consent Mode defaults to **denied** before GTM loads
 - Consent Mode updated the moment a user accepts or rejects
-- GTM loaded automatically from `GTM_CONTAINER_ID`
+- GTM loaded automatically from `GTM_CONTAINER_ID` (or `GOOGLE_TAG_MANAGER_KEY`)
 - Tag presets (Google Analytics, Hotjar, Microsoft Clarity) that document their cookies, remove
   them on rejection and supply their CSP sources
 
 ## Install
 
 ```sh
-npm install --save @transform-uk/govuk-analytics-consent
+npm install --save govuk-analytics-consent
 ```
+
+The optional [cookie audit CLI](docs/auditing.md) is a separate development package that runs
+with `npx`. Enable `auditEnabled: true` on your server and point the CLI at its URL; it reads the
+deployed cookie declarations. See the guide for setup and CI instructions.
 
 ## Quick start
 
@@ -47,6 +51,7 @@ service uses; without a configured GTM container ID, it runs un-instrumented.
 | [Fastify](docs/fastify.md) | Plugin ordering, explicit view context, Helmet CSP, signed-cookie CSRF, and handler access |
 | [Templates](docs/templates.md) | GOV.UK template inheritance, manual macros, and host-provided CSP nonce locals |
 | [Localisation](docs/localisation.md) | Language selection, nested messages, per-request translators, and custom cookie/tag copy |
+| [Cookie auditing](docs/auditing.md) | Optional sandboxed browser CLI for undeclared-cookie and category checks |
 | [Options](#options) | Complete registration options, defaults, and callback contracts |
 | [Development](#development) | Runnable examples, builds, and test commands |
 
@@ -94,7 +99,7 @@ registration order and examples.
 
 ## Tags
 
-GTM loads from `GTM_CONTAINER_ID`. Each tag you run through GTM can be declared in `tags`; a tag
+GTM loads from `GTM_CONTAINER_ID`, or `GOOGLE_TAG_MANAGER_KEY` if the former is unset. Each tag you run through GTM can be declared in `tags`; a tag
 adds its cookie rows to the cookies page, removes those cookies when its category is rejected,
 and contributes its origins to [`consent.csp`](#content-security-policy). Tags are opt-in; with
 no `tags`, only the GTM sources and the consent-cookie row are included.
@@ -103,7 +108,7 @@ no `tags`, only the GTM sources and the consent-cookie row are included.
 import {
   createGovUkAnalyticsConsent,
   hotjar
-} from '@transform-uk/govuk-analytics-consent'
+} from 'govuk-analytics-consent'
 
 const consent = createGovUkAnalyticsConsent({
   tags: ['google-analytics', hotjar({ siteId: 1234567 }), 'microsoft-clarity']
@@ -158,6 +163,22 @@ const consent = createGovUkAnalyticsConsent({ tags: ['google-analytics', mixpane
 category. It can also be a function receiving the resolved messages for language-specific copy.
 `cookies` receives those messages too. Tag ids must be unique. An
 entry in `cookies` with the same `name` as a tag cookie overrides it.
+
+#### Cookie expiry
+
+Cookie expiry is display copy, not a setting that changes the cookie's actual lifetime. Use a
+string for custom descriptions, or a structured value for language-aware formatting:
+
+```js
+const customExpiry = '73 eons'
+const sessionExpiry = { value: 'session' }
+const oneYearExpiry = { value: 1, unit: 'year' }
+```
+
+Numeric values must be positive safe integers; units are `second`, `minute`, `hour`, `day`, `week`,
+`month`, or `year`. Structured values are formatted for the selected request language; session
+copy uses `govukAnalyticsConsent.cookies.expiry.session`. An `expiryKey`, if supplied, takes
+precedence over the formatted value. See [Localisation](docs/localisation.md) for message overrides.
 
 ### Restricting what GTM can run
 
@@ -226,7 +247,7 @@ Consent Mode signals. They are not enabled by default:
 Enable all three alongside the defaults:
 
 ```js
-import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+import { registerGovUkAnalyticsConsent } from 'govuk-analytics-consent'
 
 registerGovUkAnalyticsConsent(app, {
   categories: ['default', 'advertising', 'functionality', 'personalization']
@@ -242,7 +263,9 @@ with their category in GTM so each preference actually controls whether those ta
 Built-in English and Welsh copy works without an i18n library. Use `getLanguage` to select a
 service language, `messages` for nested overrides, or a request-bound `translate` callback to use
 your host project's i18n catalogue. See the [localisation guide](docs/localisation.md) for
-configuration, fallback behaviour, and custom tag and cookie messages.
+configuration, fallback behaviour, and custom tag and cookie messages, including a
+[single-key override example](docs/localisation.md#overriding-messages) and the
+[complete built-in key reference](docs/localisation.md#built-in-key-reference).
 
 ## How it works
 
@@ -383,14 +406,15 @@ All optional.
 
 | Option | Default | Notes |
 | --- | --- | --- |
-| `gtmContainerId` | `process.env.GTM_CONTAINER_ID` | Must match `GTM-XXXXXXX`; omitted means the service runs un-instrumented |
+| `gtmContainerId` | `GTM_CONTAINER_ID`, then `GOOGLE_TAG_MANAGER_KEY` | Must match `GTM-XXXXXXX`; if both environment variables are unset, the service runs un-instrumented. An explicit option takes precedence; an empty value disables GTM rather than falling back. |
 | `cookieName` | `govuk_analytics_consent` | |
 | `cookieVersion` | `1` | Bumping it re-prompts every user. Use this if you need to ask for new consent. Details for when you might need to trigger this are in the [Cookies page design pattern](https://design-system.service.gov.uk/patterns/cookies-page/#keeping-your-cookies-page-up-to-date-and-asking-for-new-consent) |
 | `routePrefix` | `/govuk-analytics-consent` | |
+| `auditEnabled` | `false` | Exposes resolved cookie declarations at `GET {routePrefix}/audit.json` for the separate [audit CLI](docs/auditing.md); no values or private application settings are published |
 | `cookiesPageUrl` | none | Renders the banner's "View cookies" link; same-origin paths only |
 | `consentWaitForUpdate` | `500` | Consent Mode `wait_for_update` in ms; `false` omits it |
 | `serviceName` | `this service` | Used in the banner heading |
-| `messages` | Built-in English/Welsh copy | Nested overrides per language under `govuk-analytics-consent`; an absent Welsh leaf keeps its Welsh default rather than using an English override. For host-only locales, configured English copy is the fallback before built-in English. See [Localisation](docs/localisation.md#lookup-and-fallback-contract) |
+| `messages` | Built-in English/Welsh copy | Nested overrides per language under `govukAnalyticsConsent`; an absent Welsh leaf keeps its Welsh default rather than using an English override. For host-only locales, configured English copy is the fallback before built-in English. See [Localisation](docs/localisation.md#lookup-and-fallback-contract) |
 | `getLanguage` | `Accept-Language`, then English | `(request, response?) => string or undefined`, sync or async; called per request and takes priority over browser preferences. Returning `undefined` uses browser negotiation; errors propagate |
 | `translate` | none | Synchronous per-request `(key, { language, request, response, values }) => string or undefined`; host result takes priority over nested `messages`. Return `undefined` or the key itself when missing; an empty string is a valid translation. Promises and global locale mutation are unsupported. See [Localisation](docs/localisation.md#using-a-host-translator) |
 | `logger` | `console` | Host logger with `debug`, `info`, `warn`, and `error` methods accepting `(message, ...meta)`. Standard structured loggers such as Pino or Winston can be passed directly. |
@@ -408,8 +432,8 @@ All optional.
 
 Invalid configuration (for example, a malformed GTM ID or unknown cookie category) throws during
 registration rather than silently enabling tracking. A literal cookie field alongside its
-translation key is an intentional fallback pair, not a configuration conflict. For exact message
-fallback behavior and factory registration timing, see [Localisation](docs/localisation.md).
+translation key provides fallback copy when a translation is unavailable. See
+[Localisation](docs/localisation.md) for message lookup and factory behavior.
 
 ## Development
 
@@ -430,9 +454,12 @@ npm run example:fastify
 ```
 
 Each command builds the package and serves the example at `http://localhost:3000` by default.
+All three example servers load a `.env` file from the working directory using dotenv. Set
+`PORT`, `GTM_CONTAINER_ID` (or `GOOGLE_TAG_MANAGER_KEY`), `GA_MEASUREMENT_ID`, `SESSION_SECRET` or `COOKIE_SECRET` there for
+local testing; existing shell environment variables take precedence. `.env` is git-ignored.
 Set `PORT=3001` to run another example alongside it. To try GTM and Google Analytics, set
-`GTM_CONTAINER_ID` and `GA_MEASUREMENT_ID` before starting an example; without them the example
-still runs without loading GTM. All three examples include nonce-based CSP and CSRF protection
+`GTM_CONTAINER_ID` (or `GOOGLE_TAG_MANAGER_KEY`) and `GA_MEASUREMENT_ID` in `.env` or the shell;
+without a container ID the example still runs without loading GTM. All three examples include nonce-based CSP and CSRF protection
 for the consent form. The Express session secret and Fastify cookie secret are generated at
 startup for local use; set `SESSION_SECRET` or `COOKIE_SECRET` to stable secrets when needed.
 Express's default in-memory session store is for examples only, not production deployments.
@@ -453,7 +480,7 @@ Vitest file, use `npx vitest run test/html.test.ts`.
 
 ## Publishing
 
-The package is published as a public scoped npm package. The `prepack` script builds `dist`,
+The package is published as a public npm package. The `prepare` script builds `dist`,
 and `prepublishOnly` runs type checking and tests before publishing.
 
 ```sh

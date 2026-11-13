@@ -13,7 +13,7 @@ preferences fall back to English. The same language is used for the banner, cook
 category presets, and built-in cookie descriptions:
 
 ```js
-import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+import { registerGovUkAnalyticsConsent } from 'govuk-analytics-consent'
 
 registerGovUkAnalyticsConsent(server, {
   serviceName: 'Example service',
@@ -46,28 +46,159 @@ not silently converted into an English page.
 
 Use nested `messages` to override individual strings for each language without an external i18n
 library. Overrides for one language do not affect the other, and unspecified strings retain their
-built-in translations:
+built-in translations. For example, in the [Express example](../examples/express/server.js), add `messages`
+alongside `serviceName` in the `createGovUkAnalyticsConsent` options:
 
 ```js
-registerGovUkAnalyticsConsent(server, {
+const consent = createGovUkAnalyticsConsent({
+  serviceName: 'Example service',
   messages: {
-    en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept cookies' } } },
-    cy: { 'govuk-analytics-consent': {
-      banner: { acceptAll: 'Derbyn cwcis' },
-      categories: { analytics: { title: 'Cwcis dadansoddi' } }
-    } }
+    en: {
+      govukAnalyticsConsent: {
+        banner: { acceptAll: 'Accept cookies' }
+      }
+    },
+    cy: {
+      govukAnalyticsConsent: {
+        banner: { acceptAll: 'Derbyn cwcis' }
+      }
+    }
   }
 })
 ```
+
+This changes only the accept-all button in English and Welsh; all other messages keep their
+defaults. You can override either language independently. The same `messages` option works
+with the Hapi and Fastify integrations.
 
 The built-in message structure is available as `ConsentMessages` and `defaultMessages`. It covers
 banner text, cookies-page text, category titles/descriptions, table headings, radio labels, and
 notification copy. `getDefaultMessages('cy')` returns the complete Welsh catalogue.
 
+### Built-in key reference
+
+Every key below has the prefix `govukAnalyticsConsent.` for host translator lookups.
+For `messages` overrides, nest each dotted segment beneath
+`messages.<language>.govukAnalyticsConsent`, as above; do not use flat dotted keys.
+English defaults are shown below; the same keys are available in Welsh.
+
+#### Session cookies
+
+| Key (after prefix) | English default |
+| --- | --- |
+| `cookies.expiry.session` | Session |
+| `cookies.session.purpose` | Remembers your session as you move between pages |
+
+Use these keys to localize a session cookie's display copy:
+
+```js
+{
+  name: 'session_id',
+  categoryId: 'essential',
+  purposeKey: 'govukAnalyticsConsent.cookies.session.purpose',
+  expiry: { value: 'session' }
+}
+```
+
+The expiry is "Session" in English or "Sesiwn" in Welsh. These keys only change display copy;
+the host application still configures the cookie's actual lifetime.
+
+#### Other common cookies
+
+| Key (after prefix) | English default |
+| --- | --- |
+| `cookies.csrf.purpose` | Protects forms against cross-site request forgery |
+| `cookies.language.purpose` | Remembers your language choice |
+
+Session-lifetime CSRF cookies can also use `expiry: { value: 'session' }`.
+
+#### Banner
+
+| Key (after prefix) | English default |
+| --- | --- |
+| `banner.title` | Cookies on {serviceName} |
+| `banner.intro` | We use some essential cookies to make this service work. |
+| `banner.additional` | We'd also like to use additional cookies so we can understand how you use the service and make improvements. |
+| `banner.acceptAll` | Accept all cookies |
+| `banner.rejectAll` | Reject additional cookies |
+| `banner.viewCookies` | View cookies |
+| `banner.accepted` | You've accepted additional cookies. |
+| `banner.rejected` | You've rejected additional cookies. |
+| `banner.hide` | Hide this message |
+
+#### Cookies page and consent cookie
+
+| Key (after prefix) | English default |
+| --- | --- |
+| `cookies.title` | Cookies |
+| `cookies.intro` | {serviceName} puts small files (known as 'cookies') onto your device to make the service work and to understand how it's used. |
+| `cookies.essential` | These cookies always run. |
+| `cookies.categoryQuestion` | Do you want to accept {label} cookies? |
+| `cookies.changeSettings` | Change your cookie settings |
+| `cookies.saveSettings` | Save cookie settings |
+| `cookies.successBanner` | You've set your cookie preferences. |
+| `cookies.successBannerLink` | Go back to the page you were looking at |
+| `cookies.successTitle` | Success |
+| `cookies.yes` | Yes |
+| `cookies.no` | No |
+| `cookies.consent.purpose` | Saves your cookie consent settings |
+| `cookies.table.name` | Name |
+| `cookies.table.purpose` | Purpose |
+| `cookies.table.expiry` | Expires |
+
+`{serviceName}` is the configured service name; `{label}` is the category title used in the
+preference question. Preserve these placeholders where you want the dynamic value to appear.
+
+#### Category presets
+
+These keys apply to built-in presets, not the literal text of custom category objects.
+Keep IDs such as `personalization` unchanged even when translating their display copy.
+
+| Key (after prefix) | English default |
+| --- | --- |
+| `categories.essential.title` | Strictly necessary cookies |
+| `categories.essential.description` | These essential cookies do things like remember your progress through a form. They always need to be on. |
+| `categories.analytics.title` | Cookies that measure website use |
+| `categories.analytics.description` | These cookies help us understand how the service is used so we can improve it. |
+| `categories.advertising.title` | Cookies that help with our communications and marketing |
+| `categories.advertising.description` | These cookies help us understand how well our communications and marketing work and make them more relevant. |
+| `categories.functionality.title` | Cookies that enable additional functionality |
+| `categories.functionality.description` | These cookies enable optional features that improve how the service works. |
+| `categories.personalization.title` | Cookies that remember your settings |
+| `categories.personalization.description` | These cookies remember choices you make so the service can provide features and content suited to you. |
+
+#### Built-in tags
+
+These keys supply display copy when the corresponding tag is configured. Segments such as
+`ga` and `sessionUser` identify catalogue entries, not literal cookie names.
+
+| Key (after prefix) | English default |
+| --- | --- |
+| `tags.google-analytics.description` | We use Google Analytics to measure how you use the service so we can improve it based on user needs. We do not allow Google to use or share the data about how you use this site. |
+| `tags.google-analytics.provider` | Google Analytics |
+| `tags.google-analytics.expiry` | 2 years |
+| `tags.google-analytics.cookies.ga.purpose` | These help us count how many people visit the service by tracking if you’ve visited before |
+| `tags.google-analytics.cookies.session.purpose` | Used by Google Analytics to find and track an individual session with your device |
+| `tags.hotjar.description` | We use Hotjar to understand how people use the service, including which pages they visit and how they interact with them, so we can improve it. |
+| `tags.hotjar.provider` | Hotjar |
+| `tags.hotjar.cookies.sessionUser.purpose` | Used by Hotjar to recognise you when you return to the service |
+| `tags.hotjar.cookies.sessionUser.expiry` | 1 year |
+| `tags.hotjar.cookies.session.purpose` | Used by Hotjar to link together the pages you visit in a single session |
+| `tags.hotjar.cookies.session.expiry` | 30 minutes |
+| `tags.hotjar.cookies.other.purpose` | Used by Hotjar to test browser support and store details about your session |
+| `tags.hotjar.cookies.other.expiry` | Up to 1 year |
+| `tags.microsoft-clarity.provider` | Microsoft Clarity |
+| `tags.microsoft-clarity.cookies.user.purpose` | Used by Microsoft Clarity to recognise you when you return to the service |
+| `tags.microsoft-clarity.cookies.user.expiry` | 1 year |
+| `tags.microsoft-clarity.cookies.session.purpose` | Used by Microsoft Clarity to link together the pages you visit in a single session |
+| `tags.microsoft-clarity.cookies.session.expiry` | 1 day |
+| `tags.microsoft-clarity.cookies.clid.purpose` | Set by Microsoft Clarity to recognise your browser across sites that use Clarity |
+| `tags.microsoft-clarity.cookies.muid.purpose` | Set by Microsoft to recognise your browser across Microsoft sites |
+
 ## Using a host translator
 
 Hierarchical keys can instead be kept in the service's message catalogue. The package looks up
-`govuk-analytics-consent.*` keys first and uses its built-in English/Welsh copy when a key is
+`govukAnalyticsConsent.*` keys first and uses its built-in English/Welsh copy when a key is
 absent. No host translator is required. For example, an Express service using request-bound
 i18next can register its i18n middleware **before** the consent middleware:
 
@@ -78,7 +209,7 @@ initialize i18next or load translation resources. Configure i18next's key/namesp
 to match your catalogue.
 
 ```js
-import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+import { registerGovUkAnalyticsConsent } from 'govuk-analytics-consent'
 
 registerGovUkAnalyticsConsent(app, {
   getLanguage: (request) => request.language,
@@ -122,9 +253,9 @@ are available. Rendered copy is HTML-escaped, so return plain text, not HTML or 
 ## Custom tags and cookies
 
 Keys for tags use their definition IDs, for example
-`govuk-analytics-consent.tags.google-analytics.description`. Custom tag factories receive a
-translator scoped to `govuk-analytics-consent.tags.<tag.id>`; calling `translate('description',
-'Fallback')` from a tag with ID `my-tag` looks up `govuk-analytics-consent.tags.my-tag.description`.
+`govukAnalyticsConsent.tags.google-analytics.description`. Custom tag factories receive a
+translator scoped to `govukAnalyticsConsent.tags.<tag.id>`; calling `translate('description',
+'Fallback')` from a tag with ID `my-tag` looks up `govukAnalyticsConsent.tags.my-tag.description`.
 Custom cookie factories receive a translator accepting full keys and a literal fallback.
 Plain custom cookies can localize their display copy directly:
 
@@ -133,17 +264,20 @@ This is the `cookies` property of a registration options object, not a standalon
 ```js
 cookies: [{
   name: 'custom_id', categoryId: 'analytics',
-  purpose: 'Counts visits', purposeKey: 'govuk-analytics-consent.cookies.custom.purpose',
-  expiry: '1 day', expiryKey: 'govuk-analytics-consent.cookies.custom.expiry'
+  purpose: 'Counts visits', purposeKey: 'govukAnalyticsConsent.cookies.custom.purpose',
+  expiry: '1 day', expiryKey: 'govukAnalyticsConsent.cookies.custom.expiry'
 }]
 ```
 
-The literal fields are fallbacks if a key is missing; specifying both is intentional and does
-not warn. `providerKey` works the same way. Structural fields such as cookie names and category
-IDs never vary by language. A custom factory using a key not in the built-in catalogue must
-provide a fallback or a configured translation. The optional standard logger receives package
-diagnostics and defaults to `console`; the package currently uses `warn` for an unsupported
-message-locale configuration. Invalid configuration still throws.
+For purpose and expiry, a value or a key is required; when both are supplied, the value
+is a fallback. Expiry values can also be structured durations; see
+[cookie expiry](../README.md#cookie-expiry). Key-only custom values must have a built-in or configured English translation at
+registration, when the request-bound host translator is unavailable. `providerKey` works the
+same way as before. For custom keys, also supply translations for each selected language or
+provide a literal fallback. Structural fields such as cookie names and category IDs never vary by language. A
+custom factory using a key not in the built-in catalogue must provide a fallback or a configured
+translation. The optional standard logger receives package diagnostics and defaults to `console`.
+Invalid configuration throws.
 
 Factories receive `(messages, translate)`, where `messages` is the resolved nested built-in
 catalogue. They run during registration to establish canonical cookie identifiers and again for
@@ -159,10 +293,3 @@ An absent host translation must retain readable fallback copy rather than a key 
 custom cookie purpose changes with language while its name and category stay unchanged, and
 interleave requests in different languages to catch shared-locale leakage. Without host i18n,
 registration and rendering must still work using built-in messages and custom literal defaults.
-
-## Upgrading
-
-Move flat `messages` overrides into the nested `govuk-analytics-consent` tree as shown above.
-Custom cookie and tag factories now receive that same nested `ConsentMessages` shape. For HTML
-cached outside the library, vary the cache on `Accept-Language` (or your service's selected
-language) so one user's localized page is not served to another.

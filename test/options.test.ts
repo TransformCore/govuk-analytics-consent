@@ -1,16 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { resolveOptions } from '../src/consent/options.js'
+import { auditConfiguration } from '../src/consent/audit.js'
 import { googleAnalytics } from '../src/tags/google-analytics.js'
 import { defaultMessages, getDefaultMessages, negotiateLanguage, resolveMessages, selectLanguage } from '../src/consent/messages.js'
 import { createConsentContext } from '../src/integrations/core.js'
 import { safeInternalPath, normaliseRoutePrefix } from '../src/shared/url.js'
-import type { ConsentMessages, TranslateMessage } from '../src/consent/types.js'
+import type { ConsentMessages, CookieExpiry, TranslateMessage } from '../src/consent/types.js'
 
 const originalContainerId = process.env.GTM_CONTAINER_ID
+const originalGoogleTagManagerKey = process.env.GOOGLE_TAG_MANAGER_KEY
 const originalGaMeasurementId = process.env.GA_MEASUREMENT_ID
 const originalNodeEnv = process.env.NODE_ENV
 
-function restore(key: 'GTM_CONTAINER_ID' | 'GA_MEASUREMENT_ID' | 'NODE_ENV', value: string | undefined): void {
+function restore(key: 'GTM_CONTAINER_ID' | 'GOOGLE_TAG_MANAGER_KEY' | 'GA_MEASUREMENT_ID' | 'NODE_ENV', value: string | undefined): void {
   if (value === undefined) {
     delete process.env[key]
   } else {
@@ -20,34 +22,178 @@ function restore(key: 'GTM_CONTAINER_ID' | 'GA_MEASUREMENT_ID' | 'NODE_ENV', val
 
 beforeEach(() => {
   delete process.env.GTM_CONTAINER_ID
+  delete process.env.GOOGLE_TAG_MANAGER_KEY
   delete process.env.GA_MEASUREMENT_ID
 })
 
 afterEach(() => {
   restore('GTM_CONTAINER_ID', originalContainerId)
+  restore('GOOGLE_TAG_MANAGER_KEY', originalGoogleTagManagerKey)
   restore('GA_MEASUREMENT_ID', originalGaMeasurementId)
   restore('NODE_ENV', originalNodeEnv)
 })
 
 describe('resolveOptions', () => {
+  it('renders structured expiry values and the default consent cookie in the selected language', async () => {
+    const options = resolveOptions({
+      cookies: [
+        { name: 'session', categoryId: 'essential', purpose: 'Purpose', expiry: { value: 'session' } },
+        { name: 'years', categoryId: 'essential', purpose: 'Purpose', expiry: { value: 2, unit: 'year' } },
+        { name: 'minutes', categoryId: 'essential', purpose: 'Purpose', expiry: { value: 30, unit: 'minute' } }
+      ],
+      messages: { cy: { govukAnalyticsConsent: { cookies: { expiry: { session: 'Diwedd sesiwn' } } } } }
+    })
+    const english = await createConsentContext(options, { request: { headers: { 'accept-language': 'en' } } })
+    const welsh = await createConsentContext(options, { request: { headers: { 'accept-language': 'cy' } } })
+    const expiry = (cookies: typeof english.cookies, name: string) => cookies.find((cookie) => cookie.name === name)?.expiry
+    expect(expiry(english.cookies, 'session')).toBe('Session')
+    expect(expiry(welsh.cookies, 'session')).toBe('Diwedd sesiwn')
+    expect(expiry(english.cookies, 'years')).toBe('2 years')
+    expect(expiry(welsh.cookies, 'years')).toBe('2 flynedd')
+    expect(expiry(english.cookies, 'minutes')).toBe('30 minutes')
+    expect(expiry(welsh.cookies, 'minutes')).toBe('30 munud')
+    expect(expiry(english.cookies, options.cookieName)).toBe('1 year')
+    expect(expiry(welsh.cookies, options.cookieName)).toBe('1 flwyddyn')
+    expect(welsh.cookiesPage).toContain('2 flynedd')
+  })
+
+  it('lets an expiry key override a structured fallback', async () => {
+    const options = resolveOptions({
+      cookies: [{ name: 'test', categoryId: 'essential', purpose: 'Purpose',
+        expiry: { value: 1, unit: 'year' }, expiryKey: 'govukAnalyticsConsent.cookies.custom.expiry' }],
+      messages: { cy: { govukAnalyticsConsent: { cookies: { custom: { expiry: 'Hyd at flwyddyn' } } } } }
+    })
+    expect(options.cookies.find((cookie) => cookie.name === 'test')?.expiry).toBe('1 year')
+    const welsh = await createConsentContext(options, { request: { headers: { 'accept-language': 'cy' } } })
+    expect(welsh.cookies.find((cookie) => cookie.name === 'test')?.expiry).toBe('Hyd at flwyddyn')
+  })
+
+  it.each(['second', 'minute', 'hour', 'day', 'week', 'month', 'year'] as const)(
+    'formats the %s unit',
+    (unit) => {
+      const options = resolveOptions({ cookies: [{
+        name: 'test', categoryId: 'essential', purpose: 'Purpose', expiry: { value: 1, unit }
+      }] })
+      expect(options.cookies.find((cookie) => cookie.name === 'test')?.expiry).toBe(`1 ${unit}`)
+    }
+  )
+
+  it.each([
+    null, {}, { value: 'session', unit: 'day' }, { value: 0, unit: 'day' },
+    { value: -1, unit: 'day' }, { value: 1.5, unit: 'day' },
+    { value: Infinity, unit: 'day' }, { value: 1, unit: 'decade' }, { value: 1 }
+  ])('rejects invalid structured cookie expiry %j', (expiry) => {
+    expect(() => resolveOptions({ cookies: [{
+      name: 'test', categoryId: 'essential', purpose: 'Purpose', expiry: expiry as unknown as CookieExpiry
+    }] })).toThrow('Invalid cookie expiry')
+  })
+
+  it('localizes session copy without changing cookie identifiers and supports overrides', async () => {
+    const options = resolveOptions({
+      cookies: [{
+        name: 'session_id', categoryId: 'essential',
+        purposeKey: 'govukAnalyticsConsent.cookies.session.purpose',
+        expiryKey: 'govukAnalyticsConsent.cookies.expiry.session'
+      }, {
+        name: 'csrf', categoryId: 'essential',
+        purposeKey: 'govukAnalyticsConsent.cookies.csrf.purpose',
+        expiryKey: 'govukAnalyticsConsent.cookies.expiry.session'
+      }, {
+        name: 'language', categoryId: 'essential',
+        purposeKey: 'govukAnalyticsConsent.cookies.language.purpose', expiry: '1 year'
+      }]
+    })
+    for (const language of ['en', 'cy']) {
+      const { expiry: { session: expiry }, session: { purpose } } = getDefaultMessages(language).cookies
+      const context = await createConsentContext(options, {
+        request: { headers: { 'accept-language': language } }
+      })
+      expect(context.cookies.find((cookie) => cookie.name === 'session_id')).toMatchObject({
+        name: 'session_id', categoryId: 'essential', expiry, purpose
+      })
+      expect(context.cookiesPage).toContain(expiry)
+      expect(context.cookiesPage).toContain(purpose)
+      expect(context.cookies.find((cookie) => cookie.name === 'csrf')).toMatchObject({
+        name: 'csrf', categoryId: 'essential', expiry, purpose: getDefaultMessages(language).cookies.csrf.purpose
+      })
+      expect(context.cookies.find((cookie) => cookie.name === 'language')).toMatchObject({
+        name: 'language', categoryId: 'essential', expiry: '1 year', purpose: getDefaultMessages(language).cookies.language.purpose
+      })
+    }
+    const overridden = resolveOptions({
+      cookies: [{
+        name: 'session_id', categoryId: 'essential', purpose: 'Session fallback',
+        purposeKey: 'govukAnalyticsConsent.cookies.session.purpose',
+        expiry: 'Session', expiryKey: 'govukAnalyticsConsent.cookies.expiry.session'
+      }],
+      messages: { en: { govukAnalyticsConsent: { cookies: {
+        expiry: { session: 'Until you close your browser' },
+        session: { purpose: 'Custom session purpose' }
+      } } } }
+    })
+    expect(overridden.cookies.find((cookie) => cookie.name === 'session_id')?.expiry)
+      .toBe('Until you close your browser')
+    expect(overridden.cookies.find((cookie) => cookie.name === 'session_id')?.purpose)
+      .toBe('Custom session purpose')
+  })
+
+  it('requires key-only cookie copy to resolve at registration and for each language', async () => {
+    const cookie = {
+      name: 'custom_id', categoryId: 'essential',
+      purposeKey: 'govukAnalyticsConsent.cookies.custom.purpose',
+      expiryKey: 'govukAnalyticsConsent.cookies.custom.expiry'
+    }
+    expect(() => resolveOptions({ cookies: [cookie] })).toThrow('Missing translation for "govukAnalyticsConsent.cookies.custom.purpose"')
+    const options = resolveOptions({
+      cookies: [cookie],
+      messages: {
+        en: { govukAnalyticsConsent: { cookies: { custom: { purpose: 'Purpose', expiry: 'Session' } } } },
+        cy: { govukAnalyticsConsent: { cookies: { custom: { purpose: 'Pwrpas', expiry: 'Sesiwn' } } } }
+      }
+    })
+    const context = await createConsentContext(options, { request: { headers: { 'accept-language': 'cy' } } })
+    expect(context.cookies.find((item) => item.name === 'custom_id')).toMatchObject({ purpose: 'Pwrpas', expiry: 'Sesiwn' })
+    expect(() => resolveOptions({
+      cookies: [cookie],
+      messages: { en: { govukAnalyticsConsent: { cookies: { custom: { purpose: '', expiry: 'Session' } } } } }
+    })).toThrow('Invalid cookie definition')
+  })
+
+  it('makes audit publishing opt-in and exposes only resolved declarations', () => {
+    expect(resolveOptions().auditEnabled).toBe(false)
+    expect(() => resolveOptions({ auditEnabled: 'true' as unknown as boolean })).toThrow('auditEnabled')
+    const options = resolveOptions({
+      auditEnabled: true, cookieName: 'choice', cookieVersion: 3, cookiesPageUrl: '/cookies',
+      serviceName: 'PRIVATE', tags: [googleAnalytics()],
+      cookies: [() => [{ name: 'generated', categoryId: 'analytics', purpose: 'PRIVATE', expiry: 'Session' }]],
+      getNonce: () => 'SECRET'
+    })
+    const published = auditConfiguration(options)
+    expect(options.auditEnabled).toBe(true)
+    expect(published).toMatchObject({ schemaVersion: 1, cookieName: 'choice', cookieVersion: 3, cookiesPageUrl: '/cookies' })
+    expect(published.cookies).toContainEqual({ name: 'generated', categoryId: 'analytics' })
+    expect(published.cookies).toContainEqual(expect.objectContaining({ match: '_ga_*' }))
+    expect(JSON.stringify(published)).not.toMatch(/PRIVATE|SECRET|getNonce|csp/)
+  })
+
   it('uses the request translator for built-in and custom cookie copy with literal fallback', async () => {
     const options = resolveOptions({
       tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
       cookies: [
-        { name: 'custom_id', categoryId: 'analytics', purpose: 'Default purpose', purposeKey: 'govuk-analytics-consent.cookies.custom.purpose', expiry: '1 day', expiryKey: 'govuk-analytics-consent.cookies.custom.expiry', provider: 'Example provider', providerKey: 'govuk-analytics-consent.cookies.custom.provider' },
-        (_messages, translate) => [{ name: 'factory_id', categoryId: 'analytics', purpose: translate('govuk-analytics-consent.cookies.factory.purpose', 'Factory fallback'), expiry: 'Session' }]
+        { name: 'custom_id', categoryId: 'analytics', purpose: 'Default purpose', purposeKey: 'govukAnalyticsConsent.cookies.custom.purpose', expiry: '1 day', expiryKey: 'govukAnalyticsConsent.cookies.custom.expiry', provider: 'Example provider', providerKey: 'govukAnalyticsConsent.cookies.custom.provider' },
+        (_messages, translate) => [{ name: 'factory_id', categoryId: 'analytics', purpose: translate('govukAnalyticsConsent.cookies.factory.purpose', 'Factory fallback'), expiry: 'Session' }]
       ],
       translate: (key, { request, response, values }) => {
         expect(response).toBe((request as { reply: unknown }).reply)
-        if (key === 'govuk-analytics-consent.banner.title') return `Cookies: ${values?.serviceName ?? '{{serviceName}}'}`
-        if (key === 'govuk-analytics-consent.cookies.categoryQuestion') return 'Accept {{label}} <cookies>?'
-        if (key === 'govuk-analytics-consent.tags.google-analytics.description') return 'Description from host'
+        if (key === 'govukAnalyticsConsent.banner.title') return `Cookies: ${values?.serviceName ?? '{{serviceName}}'}`
+        if (key === 'govukAnalyticsConsent.cookies.categoryQuestion') return 'Accept {{label}} <cookies>?'
+        if (key === 'govukAnalyticsConsent.tags.google-analytics.description') return 'Description from host'
         return (request as { copy: Record<string, string> }).copy[key]
       }
     })
     const french = { reply: {}, headers: { 'accept-language': 'fr' }, copy: {
-      'govuk-analytics-consent.cookies.custom.purpose': 'But en francais',
-      'govuk-analytics-consent.cookies.factory.purpose': 'Fabrique'
+      'govukAnalyticsConsent.cookies.custom.purpose': 'But en francais',
+      'govukAnalyticsConsent.cookies.factory.purpose': 'Fabrique'
     } }
     const welsh = { reply: {}, headers: { 'accept-language': 'cy' }, copy: {} }
     const [frContext, cyContext] = await Promise.all([
@@ -79,8 +225,8 @@ describe('resolveOptions', () => {
     }
     const options = resolveOptions({
       logger,
-      messages: { en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept here' } } }, fr: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accepter' } } } },
-      cookies: [{ name: 'custom_id', categoryId: 'analytics', purpose: 'Purpose', purposeKey: 'govuk-analytics-consent.cookies.custom.purpose', expiry: 'Session' }]
+      messages: { en: { govukAnalyticsConsent: { banner: { acceptAll: 'Accept here' } } }, fr: { govukAnalyticsConsent: { banner: { acceptAll: 'Accepter' } } } },
+      cookies: [{ name: 'custom_id', categoryId: 'analytics', purpose: 'Purpose', purposeKey: 'govukAnalyticsConsent.cookies.custom.purpose', expiry: 'Session' }]
     })
     const context = await createConsentContext(options, { request: { headers: { 'accept-language': 'fr' } } })
 
@@ -89,7 +235,7 @@ describe('resolveOptions', () => {
     expect(options.logger).toBe(logger)
     expect(warnings).toEqual([expect.stringContaining('"fr"')])
     expect(resolveMessages('cy', {
-      en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept here' } } }
+      en: { govukAnalyticsConsent: { banner: { acceptAll: 'Accept here' } } }
     }).banner.acceptAll).toBe(defaultMessages.cy.banner.acceptAll)
   })
 
@@ -110,15 +256,15 @@ describe('resolveOptions', () => {
         }]
       }],
       translate: (key) => {
-        if (key.startsWith('govuk-analytics-consent.tags.my-tag.')) keys.push(key)
+        if (key.startsWith('govukAnalyticsConsent.tags.my-tag.')) keys.push(key)
         return key.endsWith('.description') ? 'Translated tag' : undefined
       }
     })
     const context = await createConsentContext(options, { request: { headers: { 'accept-language': 'en' } } })
 
     expect(keys).toEqual([
-      'govuk-analytics-consent.tags.my-tag.cookies.my_tag.purpose',
-      'govuk-analytics-consent.tags.my-tag.description'
+      'govukAnalyticsConsent.tags.my-tag.cookies.my_tag.purpose',
+      'govukAnalyticsConsent.tags.my-tag.description'
     ])
     expect(context.tagDescriptions[0]?.text).toBe('Translated tag')
     expect(context.cookies.find((cookie) => cookie.name === 'my_tag')?.purpose).toBe('Purpose fallback')
@@ -127,7 +273,7 @@ describe('resolveOptions', () => {
   it('localizes categories and built-in cookie descriptions per request', async () => {
     const options = resolveOptions({
       tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
-      messages: { cy: { 'govuk-analytics-consent': {
+      messages: { cy: { govukAnalyticsConsent: {
         categories: { analytics: { title: 'Dadansoddi' } },
         tags: { 'google-analytics': { cookies: { ga: { purpose: 'Cyfrif ymweliadau' } } } }
       } } }
@@ -185,8 +331,8 @@ describe('resolveOptions', () => {
 
   it('applies only the selected language overrides and falls back to overridden English', () => {
     const messages = {
-      en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept' } } },
-      cy: { 'govuk-analytics-consent': { banner: { acceptAll: 'Derbyn' } } }
+      en: { govukAnalyticsConsent: { banner: { acceptAll: 'Accept' } } },
+      cy: { govukAnalyticsConsent: { banner: { acceptAll: 'Derbyn' } } }
     }
 
     expect(resolveMessages('cy', messages).banner.acceptAll).toBe('Derbyn')
@@ -238,6 +384,27 @@ describe('resolveOptions', () => {
     expect(resolveOptions().gtmContainerId).toBe('GTM-ABC123')
   })
 
+  it('uses GOOGLE_TAG_MANAGER_KEY when GTM_CONTAINER_ID is unset', () => {
+    process.env.GOOGLE_TAG_MANAGER_KEY = ' GTM-DEF456 '
+    expect(resolveOptions().gtmContainerId).toBe('GTM-DEF456')
+  })
+
+  it('prefers GTM_CONTAINER_ID over GOOGLE_TAG_MANAGER_KEY, including when empty', () => {
+    process.env.GOOGLE_TAG_MANAGER_KEY = 'GTM-DEF456'
+    process.env.GTM_CONTAINER_ID = 'GTM-ABC123'
+    expect(resolveOptions().gtmContainerId).toBe('GTM-ABC123')
+    process.env.GTM_CONTAINER_ID = ' '
+    expect(resolveOptions().gtmContainerId).toBeNull()
+  })
+
+  it('validates the fallback ID without masking invalid primary values', () => {
+    process.env.GOOGLE_TAG_MANAGER_KEY = 'not-a-container-id'
+    expect(() => resolveOptions()).toThrow(/Invalid GTM container ID/)
+    process.env.GOOGLE_TAG_MANAGER_KEY = 'GTM-DEF456'
+    process.env.GTM_CONTAINER_ID = 'invalid'
+    expect(() => resolveOptions()).toThrow(/Invalid GTM container ID/)
+  })
+
   it('provides sensible default English copy', () => {
     const resolved = resolveOptions()
 
@@ -251,7 +418,7 @@ describe('resolveOptions', () => {
     const resolved = resolveOptions({
       messages: {
         en: {
-          'govuk-analytics-consent': {
+          govukAnalyticsConsent: {
             banner: { acceptAll: 'Accept all', rejectAll: 'Reject all' },
             cookies: { changeSettings: 'Manage cookies' }
           }
@@ -267,8 +434,10 @@ describe('resolveOptions', () => {
 
   it('prefers an explicit container id over the environment', () => {
     process.env.GTM_CONTAINER_ID = 'GTM-ABC123'
+    process.env.GOOGLE_TAG_MANAGER_KEY = 'GTM-DEF456'
 
     expect(resolveOptions({ gtmContainerId: 'GTM-XYZ789' }).gtmContainerId).toBe('GTM-XYZ789')
+    expect(resolveOptions({ gtmContainerId: '' }).gtmContainerId).toBeNull()
   })
 
   it.each(["GTM-'+alert(1)+'", 'gtm-lowercase', 'UA-123456'])(
@@ -326,7 +495,7 @@ describe('cookies table defaults', () => {
       tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
       messages: {
         en: {
-          'govuk-analytics-consent': {
+          govukAnalyticsConsent: {
             tags: {
               'google-analytics': {
                 cookies: {

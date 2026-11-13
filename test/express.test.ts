@@ -20,11 +20,11 @@ beforeEach(() => {
     gtmContainerId: 'GTM-ABC123',
     tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
     messages: {
-      en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept everything' } } },
-      cy: { 'govuk-analytics-consent': { banner: { acceptAll: 'Derbyn popeth' } } }
+      en: { govukAnalyticsConsent: { banner: { acceptAll: 'Accept everything' } } },
+      cy: { govukAnalyticsConsent: { banner: { acceptAll: 'Derbyn popeth' } } }
     },
     translate: (key, { request, response }) => {
-      if (key !== 'govuk-analytics-consent.banner.acceptAll') return undefined
+      if (key !== 'govukAnalyticsConsent.banner.acceptAll') return undefined
       return (response as express.Response).locals !== undefined
         ? (request as express.Request).header('x-consent-copy') : undefined
     }
@@ -44,6 +44,23 @@ beforeEach(() => {
 })
 
 describe('express integration', () => {
+  it('only publishes audit JSON when enabled, respecting the route prefix', async () => {
+    expect((await request(app).get('/govuk-analytics-consent/audit.json')).status).toBe(404)
+    const auditApp = express()
+    registerGovUkAnalyticsConsent(auditApp, {
+      auditEnabled: true, routePrefix: '/consent-tools',
+      cookies: [() => [{ name: 'generated', categoryId: 'analytics', purpose: 'Private', expiry: 'Session' }]],
+      getCsrfFormFields: () => { throw new Error('Must not create CSRF tokens for audit JSON') }
+    })
+    const response = await request(auditApp).get('/consent-tools/audit.json')
+    expect(response.status).toBe(200)
+    expect(response.headers['cache-control']).toBe('no-store')
+    expect(response.headers['content-type']).toContain('application/json')
+    expect(response.body).toMatchObject({ schemaVersion: 1, cookieName: 'govuk_analytics_consent' })
+    expect(response.body.cookies).toContainEqual({ name: 'generated', categoryId: 'analytics' })
+    expect(response.text).not.toContain('Private')
+  })
+
   it('uses the current request and response for host translation', async () => {
     const translated = await request(app).get('/start').set('x-consent-copy', 'From Express')
     const ordinary = await request(app).get('/start')

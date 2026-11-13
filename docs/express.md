@@ -9,7 +9,7 @@ consent once. Use the [Express example](../examples/express/server.js) for a run
 and the [options reference](../README.md#options) for callback contracts.
 
 ```sh
-npm install @transform-uk/govuk-analytics-consent express nunjucks govuk-frontend
+npm install govuk-analytics-consent express nunjucks govuk-frontend
 # Optional security middleware; choose one CSRF recipe:
 npm install helmet express-session csrf-sync express-rate-limit
 # For the alternative double-submit recipe:
@@ -26,7 +26,7 @@ import nunjucks from 'nunjucks'
 import {
   registerGovUkAnalyticsConsent,
   govukAnalyticsConsentTemplatePath
-} from '@transform-uk/govuk-analytics-consent'
+} from 'govuk-analytics-consent'
 
 nunjucks.configure([govukAnalyticsConsentTemplatePath(), 'node_modules/govuk-frontend/dist', 'views'], {
   express: app
@@ -72,7 +72,7 @@ import helmet from 'helmet'
 import {
   createGovUkAnalyticsConsent,
   registerGovUkAnalyticsConsent
-} from '@transform-uk/govuk-analytics-consent'
+} from 'govuk-analytics-consent'
 
 const consent = createGovUkAnalyticsConsent({
   tags: ['google-analytics'],
@@ -112,7 +112,7 @@ provide its token in both generated forms. For [`csrf-sync`](https://github.com/
 ```js
 import express from 'express'
 import { csrfSync } from 'csrf-sync'
-import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+import { registerGovUkAnalyticsConsent } from 'govuk-analytics-consent'
 
 const { generateToken, csrfSynchronisedProtection } = csrfSync({
   getTokenFromRequest: (req) => req.body?._csrf
@@ -133,7 +133,7 @@ double-submit cookie. Use one recipe, not both:
 import express from 'express'
 import cookieParser from 'cookie-parser'
 import { doubleCsrf } from 'csrf-csrf'
-import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+import { registerGovUkAnalyticsConsent } from 'govuk-analytics-consent'
 
 const { doubleCsrfProtection } = doubleCsrf({
   getSecret: () => config.csrfSecret,
@@ -152,9 +152,9 @@ registerGovUkAnalyticsConsent(app, {
 
 These middleware validate the POST before the package handler; do not also set
 `verifyCsrfFormSubmission`. For application-specific validation, use that callback instead;
-returning `false` sends a `403`. The browser-enhanced banner currently records its choice
-client-side, so these recipes protect the cookies-page POST and the banner's native no-JavaScript
-form. Configure `sessionMiddleware` yourself, register `cookie-parser` after `express-session`
+returning `false` sends a `403`. With JavaScript enabled, the banner saves the choice client-side;
+these recipes protect the cookies-page POST and the banner's native no-JavaScript form. Configure
+`sessionMiddleware` yourself, register `cookie-parser` after `express-session`
 when both are used, keep secrets outside source control, and never shared-cache token-bearing
 HTML.
 
@@ -171,7 +171,7 @@ consent route, then register consent:
 
 ```js
 import { rateLimit } from 'express-rate-limit'
-import { registerGovUkAnalyticsConsent } from '@transform-uk/govuk-analytics-consent'
+import { registerGovUkAnalyticsConsent } from 'govuk-analytics-consent'
 
 app.use('/govuk-analytics-consent/consent', rateLimit({
   windowMs: 60_000,
