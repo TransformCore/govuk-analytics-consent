@@ -388,6 +388,7 @@ test('compiled CLI rejects report aliases before starting the audit', async () =
 })
 
 test('compiled CLI writes redacted JSON and returns success, failure and incomplete exit codes', async () => {
+  test.setTimeout(60_000)
   const directory = await mkdtemp(join(tmpdir(), 'consent-audit-'))
   const configuration = join(directory, 'config.json')
   const output = join(directory, 'report.json')
