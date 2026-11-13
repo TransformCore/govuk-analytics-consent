@@ -5,6 +5,7 @@ import type { ScenarioOptions } from './e2e/fixtures.js'
 export default defineConfig<ScenarioOptions>({
   testDir: './e2e',
   fullyParallel: true,
+  workers: 2,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
