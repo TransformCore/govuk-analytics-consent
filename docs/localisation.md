@@ -86,7 +86,7 @@ English defaults are shown below; the same keys are available in Welsh.
 
 | Key (after prefix) | English default |
 | --- | --- |
-| `cookies.session.expiry` | Session |
+| `cookies.expiry.session` | Session |
 | `cookies.session.purpose` | Remembers your session as you move between pages |
 
 Use these keys to localize a session cookie's display copy:
@@ -96,7 +96,7 @@ Use these keys to localize a session cookie's display copy:
   name: 'session_id',
   categoryId: 'essential',
   purposeKey: 'govukAnalyticsConsent.cookies.session.purpose',
-  expiryKey: 'govukAnalyticsConsent.cookies.session.expiry'
+  expiry: { value: 'session' }
 }
 ```
 
@@ -110,7 +110,7 @@ the host application still configures the cookie's actual lifetime.
 | `cookies.csrf.purpose` | Protects forms against cross-site request forgery |
 | `cookies.language.purpose` | Remembers your language choice |
 
-Session-lifetime CSRF cookies can also use `govukAnalyticsConsent.cookies.session.expiry`.
+Session-lifetime CSRF cookies can also use `expiry: { value: 'session' }`.
 
 #### Banner
 
@@ -269,8 +269,9 @@ cookies: [{
 }]
 ```
 
-For purpose and expiry, a literal value or a key is required; when both are supplied, the literal
-is a fallback. Key-only custom values must have a built-in or configured English translation at
+For purpose and expiry, a value or a key is required; when both are supplied, the value
+is a fallback. Expiry values can also be structured durations; see
+[cookie expiry](../README.md#cookie-expiry). Key-only custom values must have a built-in or configured English translation at
 registration, when the request-bound host translator is unavailable. `providerKey` works the
 same way as before. For custom keys, also supply translations for each selected language or
 provide a literal fallback. Structural fields such as cookie names and category IDs never vary by language. A

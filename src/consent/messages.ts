@@ -26,10 +26,8 @@ export const defaultMessages = {
       yes: 'Yes',
       no: 'No',
       consent: { purpose: 'Saves your cookie consent settings' },
-      session: {
-        expiry: 'Session',
-        purpose: 'Remembers your session as you move between pages'
-      },
+      expiry: { session: 'Session' },
+      session: { purpose: 'Remembers your session as you move between pages' },
       csrf: { purpose: 'Protects forms against cross-site request forgery' },
       language: { purpose: 'Remembers your language choice' },
       table: { name: 'Name', purpose: 'Purpose', expiry: 'Expires' }
@@ -112,10 +110,8 @@ export const defaultMessages = {
       yes: 'Ie',
       no: 'Na',
       consent: { purpose: 'Yn cadw eich gosodiadau cwcis' },
-      session: {
-        expiry: 'Sesiwn',
-        purpose: 'Yn cofio eich sesiwn wrth i chi symud rhwng tudalennau'
-      },
+      expiry: { session: 'Sesiwn' },
+      session: { purpose: 'Yn cofio eich sesiwn wrth i chi symud rhwng tudalennau' },
       csrf: { purpose: 'Yn diogelu ffurflenni rhag ffugio ceisiadau traws-safle' },
       language: { purpose: 'Yn cofio eich dewis iaith' },
       table: { name: 'Enw', purpose: 'Pwrpas', expiry: 'Yn dod i ben' }

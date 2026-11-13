@@ -5,13 +5,14 @@ import { googleAnalytics } from '../src/tags/google-analytics.js'
 import { defaultMessages, getDefaultMessages, negotiateLanguage, resolveMessages, selectLanguage } from '../src/consent/messages.js'
 import { createConsentContext } from '../src/integrations/core.js'
 import { safeInternalPath, normaliseRoutePrefix } from '../src/shared/url.js'
-import type { ConsentMessages, TranslateMessage } from '../src/consent/types.js'
+import type { ConsentMessages, CookieExpiry, TranslateMessage } from '../src/consent/types.js'
 
 const originalContainerId = process.env.GTM_CONTAINER_ID
+const originalGoogleTagManagerKey = process.env.GOOGLE_TAG_MANAGER_KEY
 const originalGaMeasurementId = process.env.GA_MEASUREMENT_ID
 const originalNodeEnv = process.env.NODE_ENV
 
-function restore(key: 'GTM_CONTAINER_ID' | 'GA_MEASUREMENT_ID' | 'NODE_ENV', value: string | undefined): void {
+function restore(key: 'GTM_CONTAINER_ID' | 'GOOGLE_TAG_MANAGER_KEY' | 'GA_MEASUREMENT_ID' | 'NODE_ENV', value: string | undefined): void {
   if (value === undefined) {
     delete process.env[key]
   } else {
@@ -21,33 +22,89 @@ function restore(key: 'GTM_CONTAINER_ID' | 'GA_MEASUREMENT_ID' | 'NODE_ENV', val
 
 beforeEach(() => {
   delete process.env.GTM_CONTAINER_ID
+  delete process.env.GOOGLE_TAG_MANAGER_KEY
   delete process.env.GA_MEASUREMENT_ID
 })
 
 afterEach(() => {
   restore('GTM_CONTAINER_ID', originalContainerId)
+  restore('GOOGLE_TAG_MANAGER_KEY', originalGoogleTagManagerKey)
   restore('GA_MEASUREMENT_ID', originalGaMeasurementId)
   restore('NODE_ENV', originalNodeEnv)
 })
 
 describe('resolveOptions', () => {
+  it('renders structured expiry values and the default consent cookie in the selected language', async () => {
+    const options = resolveOptions({
+      cookies: [
+        { name: 'session', categoryId: 'essential', purpose: 'Purpose', expiry: { value: 'session' } },
+        { name: 'years', categoryId: 'essential', purpose: 'Purpose', expiry: { value: 2, unit: 'year' } },
+        { name: 'minutes', categoryId: 'essential', purpose: 'Purpose', expiry: { value: 30, unit: 'minute' } }
+      ],
+      messages: { cy: { govukAnalyticsConsent: { cookies: { expiry: { session: 'Diwedd sesiwn' } } } } }
+    })
+    const english = await createConsentContext(options, { request: { headers: { 'accept-language': 'en' } } })
+    const welsh = await createConsentContext(options, { request: { headers: { 'accept-language': 'cy' } } })
+    const expiry = (cookies: typeof english.cookies, name: string) => cookies.find((cookie) => cookie.name === name)?.expiry
+    expect(expiry(english.cookies, 'session')).toBe('Session')
+    expect(expiry(welsh.cookies, 'session')).toBe('Diwedd sesiwn')
+    expect(expiry(english.cookies, 'years')).toBe('2 years')
+    expect(expiry(welsh.cookies, 'years')).toBe('2 flynedd')
+    expect(expiry(english.cookies, 'minutes')).toBe('30 minutes')
+    expect(expiry(welsh.cookies, 'minutes')).toBe('30 munud')
+    expect(expiry(english.cookies, options.cookieName)).toBe('1 year')
+    expect(expiry(welsh.cookies, options.cookieName)).toBe('1 flwyddyn')
+    expect(welsh.cookiesPage).toContain('2 flynedd')
+  })
+
+  it('lets an expiry key override a structured fallback', async () => {
+    const options = resolveOptions({
+      cookies: [{ name: 'test', categoryId: 'essential', purpose: 'Purpose',
+        expiry: { value: 1, unit: 'year' }, expiryKey: 'govukAnalyticsConsent.cookies.custom.expiry' }],
+      messages: { cy: { govukAnalyticsConsent: { cookies: { custom: { expiry: 'Hyd at flwyddyn' } } } } }
+    })
+    expect(options.cookies.find((cookie) => cookie.name === 'test')?.expiry).toBe('1 year')
+    const welsh = await createConsentContext(options, { request: { headers: { 'accept-language': 'cy' } } })
+    expect(welsh.cookies.find((cookie) => cookie.name === 'test')?.expiry).toBe('Hyd at flwyddyn')
+  })
+
+  it.each(['second', 'minute', 'hour', 'day', 'week', 'month', 'year'] as const)(
+    'formats the %s unit',
+    (unit) => {
+      const options = resolveOptions({ cookies: [{
+        name: 'test', categoryId: 'essential', purpose: 'Purpose', expiry: { value: 1, unit }
+      }] })
+      expect(options.cookies.find((cookie) => cookie.name === 'test')?.expiry).toBe(`1 ${unit}`)
+    }
+  )
+
+  it.each([
+    null, {}, { value: 'session', unit: 'day' }, { value: 0, unit: 'day' },
+    { value: -1, unit: 'day' }, { value: 1.5, unit: 'day' },
+    { value: Infinity, unit: 'day' }, { value: 1, unit: 'decade' }, { value: 1 }
+  ])('rejects invalid structured cookie expiry %j', (expiry) => {
+    expect(() => resolveOptions({ cookies: [{
+      name: 'test', categoryId: 'essential', purpose: 'Purpose', expiry: expiry as unknown as CookieExpiry
+    }] })).toThrow('Invalid cookie expiry')
+  })
+
   it('localizes session copy without changing cookie identifiers and supports overrides', async () => {
     const options = resolveOptions({
       cookies: [{
         name: 'session_id', categoryId: 'essential',
         purposeKey: 'govukAnalyticsConsent.cookies.session.purpose',
-        expiryKey: 'govukAnalyticsConsent.cookies.session.expiry'
+        expiryKey: 'govukAnalyticsConsent.cookies.expiry.session'
       }, {
         name: 'csrf', categoryId: 'essential',
         purposeKey: 'govukAnalyticsConsent.cookies.csrf.purpose',
-        expiryKey: 'govukAnalyticsConsent.cookies.session.expiry'
+        expiryKey: 'govukAnalyticsConsent.cookies.expiry.session'
       }, {
         name: 'language', categoryId: 'essential',
         purposeKey: 'govukAnalyticsConsent.cookies.language.purpose', expiry: '1 year'
       }]
     })
     for (const language of ['en', 'cy']) {
-      const { expiry, purpose } = getDefaultMessages(language).cookies.session
+      const { expiry: { session: expiry }, session: { purpose } } = getDefaultMessages(language).cookies
       const context = await createConsentContext(options, {
         request: { headers: { 'accept-language': language } }
       })
@@ -67,11 +124,12 @@ describe('resolveOptions', () => {
       cookies: [{
         name: 'session_id', categoryId: 'essential', purpose: 'Session fallback',
         purposeKey: 'govukAnalyticsConsent.cookies.session.purpose',
-        expiry: 'Session', expiryKey: 'govukAnalyticsConsent.cookies.session.expiry'
+        expiry: 'Session', expiryKey: 'govukAnalyticsConsent.cookies.expiry.session'
       }],
-      messages: { en: { govukAnalyticsConsent: { cookies: { session: {
-        expiry: 'Until you close your browser', purpose: 'Custom session purpose'
-      } } } } }
+      messages: { en: { govukAnalyticsConsent: { cookies: {
+        expiry: { session: 'Until you close your browser' },
+        session: { purpose: 'Custom session purpose' }
+      } } } }
     })
     expect(overridden.cookies.find((cookie) => cookie.name === 'session_id')?.expiry)
       .toBe('Until you close your browser')
@@ -326,6 +384,27 @@ describe('resolveOptions', () => {
     expect(resolveOptions().gtmContainerId).toBe('GTM-ABC123')
   })
 
+  it('uses GOOGLE_TAG_MANAGER_KEY when GTM_CONTAINER_ID is unset', () => {
+    process.env.GOOGLE_TAG_MANAGER_KEY = ' GTM-DEF456 '
+    expect(resolveOptions().gtmContainerId).toBe('GTM-DEF456')
+  })
+
+  it('prefers GTM_CONTAINER_ID over GOOGLE_TAG_MANAGER_KEY, including when empty', () => {
+    process.env.GOOGLE_TAG_MANAGER_KEY = 'GTM-DEF456'
+    process.env.GTM_CONTAINER_ID = 'GTM-ABC123'
+    expect(resolveOptions().gtmContainerId).toBe('GTM-ABC123')
+    process.env.GTM_CONTAINER_ID = ' '
+    expect(resolveOptions().gtmContainerId).toBeNull()
+  })
+
+  it('validates the fallback ID without masking invalid primary values', () => {
+    process.env.GOOGLE_TAG_MANAGER_KEY = 'not-a-container-id'
+    expect(() => resolveOptions()).toThrow(/Invalid GTM container ID/)
+    process.env.GOOGLE_TAG_MANAGER_KEY = 'GTM-DEF456'
+    process.env.GTM_CONTAINER_ID = 'invalid'
+    expect(() => resolveOptions()).toThrow(/Invalid GTM container ID/)
+  })
+
   it('provides sensible default English copy', () => {
     const resolved = resolveOptions()
 
@@ -355,8 +434,10 @@ describe('resolveOptions', () => {
 
   it('prefers an explicit container id over the environment', () => {
     process.env.GTM_CONTAINER_ID = 'GTM-ABC123'
+    process.env.GOOGLE_TAG_MANAGER_KEY = 'GTM-DEF456'
 
     expect(resolveOptions({ gtmContainerId: 'GTM-XYZ789' }).gtmContainerId).toBe('GTM-XYZ789')
+    expect(resolveOptions({ gtmContainerId: '' }).gtmContainerId).toBeNull()
   })
 
   it.each(["GTM-'+alert(1)+'", 'gtm-lowercase', 'UA-123456'])(

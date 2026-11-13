@@ -37,14 +37,14 @@ const consent = createGovUkAnalyticsConsent({
   tags: ['google-analytics'],
   gtmAllowlist: ['auto'],
   cookies: [
-    { name: 'session_id', categoryId: 'essential', purposeKey: 'govukAnalyticsConsent.cookies.session.purpose', expiryKey: 'govukAnalyticsConsent.cookies.session.expiry' },
-    { name: '_csrf', categoryId: 'essential', purposeKey: 'govukAnalyticsConsent.cookies.csrf.purpose', expiryKey: 'govukAnalyticsConsent.cookies.session.expiry' },
-    { name: languageCookieName, categoryId: 'essential', purposeKey: 'govukAnalyticsConsent.cookies.language.purpose', expiry: '1 year' },
+    { name: 'session_id', categoryId: 'essential', purposeKey: 'govukAnalyticsConsent.cookies.session.purpose', expiry: { value: 'session' } },
+    { name: '_csrf', categoryId: 'essential', purposeKey: 'govukAnalyticsConsent.cookies.csrf.purpose', expiry: { value: 'session' } },
+    { name: languageCookieName, categoryId: 'essential', purposeKey: 'govukAnalyticsConsent.cookies.language.purpose', expiry: { value: 1, unit: 'year' } },
     {
       name: 'example_preferences',
       categoryId: 'personalization',
       purpose: 'Remembers your display preferences',
-      expiry: '1 year'
+      expiry: { value: 1, unit: 'year' }
     }
   ],
   getLanguage: (request) => exampleLanguage(request.headers.cookie),

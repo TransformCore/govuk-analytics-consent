@@ -115,6 +115,8 @@ export type {
   CookieCategoryPreset,
   CookieDefinition,
   CookieDefinitionOptions,
+  CookieExpiry,
+  CookieExpiryUnit,
   CookieDefinitionFactory,
   CookieDefinitionInput,
   CookieRemoval,

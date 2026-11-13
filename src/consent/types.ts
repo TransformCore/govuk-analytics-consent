@@ -61,10 +61,13 @@ export interface CookieDefinition {
   removeOnReject?: CookieRemoval
 }
 
+export type CookieExpiryUnit = 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year'
+export type CookieExpiry = { value: 'session' } | { value: number; unit: CookieExpiryUnit }
+
 /** Cookie input must provide a literal value or a translation key for each required field. */
 export type CookieDefinitionOptions = Omit<CookieDefinition, 'purpose' | 'expiry'> &
   ({ purpose: string; purposeKey?: string } | { purpose?: string; purposeKey: string }) &
-  ({ expiry: string; expiryKey?: string } | { expiry?: string; expiryKey: string })
+  ({ expiry: string | CookieExpiry; expiryKey?: string } | { expiry?: string | CookieExpiry; expiryKey: string })
 
 export interface TagDescription {
   categoryId: string
@@ -109,7 +112,8 @@ export interface ConsentMessages {
     yes: string
     no: string
     consent: { purpose: string }
-    session: { expiry: string; purpose: string }
+    expiry: { session: string }
+    session: { purpose: string }
     csrf: { purpose: string }
     language: { purpose: string }
     table: { name: string; purpose: string; expiry: string }
@@ -147,7 +151,7 @@ export interface ConsentMessages {
 }
 
 export interface GovUkAnalyticsConsentOptions {
-  /** Defaults to `process.env.GTM_CONTAINER_ID`. */
+  /** Defaults to `GTM_CONTAINER_ID`, then `GOOGLE_TAG_MANAGER_KEY`. */
   gtmContainerId?: string
   cookieName?: string
   cookieVersion?: number

@@ -32,7 +32,8 @@ await server.register({
 ```
 
 Use `searchPaths` when constructing your Nunjucks `FileSystemLoader`; declaring the array alone
-does not configure Vision. Omit `GTM_CONTAINER_ID` when the service should not load GTM.
+does not configure Vision. To run without GTM, omit both `GTM_CONTAINER_ID` and
+`GOOGLE_TAG_MANAGER_KEY`, or explicitly set `gtmContainerId` to an empty string.
 
 The plugin registers the consent routes and injects `govukAnalyticsConsent` into Hapi view
 responses. Extend `govuk-analytics-consent/template.njk` instead of `govuk/template.njk` to add

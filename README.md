@@ -11,7 +11,7 @@ Source: https://github.com/TransformCore/govuk-analytics-consent
 - Consent stored in a `govuk_analytics_consent` cookie
 - Consent Mode defaults to **denied** before GTM loads
 - Consent Mode updated the moment a user accepts or rejects
-- GTM loaded automatically from `GTM_CONTAINER_ID`
+- GTM loaded automatically from `GTM_CONTAINER_ID` (or `GOOGLE_TAG_MANAGER_KEY`)
 - Tag presets (Google Analytics, Hotjar, Microsoft Clarity) that document their cookies, remove
   them on rejection and supply their CSP sources
 
@@ -99,7 +99,7 @@ registration order and examples.
 
 ## Tags
 
-GTM loads from `GTM_CONTAINER_ID`. Each tag you run through GTM can be declared in `tags`; a tag
+GTM loads from `GTM_CONTAINER_ID`, or `GOOGLE_TAG_MANAGER_KEY` if the former is unset. Each tag you run through GTM can be declared in `tags`; a tag
 adds its cookie rows to the cookies page, removes those cookies when its category is rejected,
 and contributes its origins to [`consent.csp`](#content-security-policy). Tags are opt-in; with
 no `tags`, only the GTM sources and the consent-cookie row are included.
@@ -163,6 +163,22 @@ const consent = createGovUkAnalyticsConsent({ tags: ['google-analytics', mixpane
 category. It can also be a function receiving the resolved messages for language-specific copy.
 `cookies` receives those messages too. Tag ids must be unique. An
 entry in `cookies` with the same `name` as a tag cookie overrides it.
+
+#### Cookie expiry
+
+Cookie expiry is display copy, not a setting that changes the cookie's actual lifetime. Use a
+string for custom descriptions, or a structured value for language-aware formatting:
+
+```js
+const customExpiry = '73 eons'
+const sessionExpiry = { value: 'session' }
+const oneYearExpiry = { value: 1, unit: 'year' }
+```
+
+Numeric values must be positive safe integers; units are `second`, `minute`, `hour`, `day`, `week`,
+`month`, or `year`. Structured values are formatted for the selected request language; session
+copy uses `govukAnalyticsConsent.cookies.expiry.session`. An `expiryKey`, if supplied, takes
+precedence over the formatted value. See [Localisation](docs/localisation.md) for message overrides.
 
 ### Restricting what GTM can run
 
@@ -390,7 +406,7 @@ All optional.
 
 | Option | Default | Notes |
 | --- | --- | --- |
-| `gtmContainerId` | `process.env.GTM_CONTAINER_ID` | Must match `GTM-XXXXXXX`; omitted means the service runs un-instrumented |
+| `gtmContainerId` | `GTM_CONTAINER_ID`, then `GOOGLE_TAG_MANAGER_KEY` | Must match `GTM-XXXXXXX`; if both environment variables are unset, the service runs un-instrumented. An explicit option takes precedence; an empty value disables GTM rather than falling back. |
 | `cookieName` | `govuk_analytics_consent` | |
 | `cookieVersion` | `1` | Bumping it re-prompts every user. Use this if you need to ask for new consent. Details for when you might need to trigger this are in the [Cookies page design pattern](https://design-system.service.gov.uk/patterns/cookies-page/#keeping-your-cookies-page-up-to-date-and-asking-for-new-consent) |
 | `routePrefix` | `/govuk-analytics-consent` | |
@@ -439,11 +455,11 @@ npm run example:fastify
 
 Each command builds the package and serves the example at `http://localhost:3000` by default.
 All three example servers load a `.env` file from the working directory using dotenv. Set
-`PORT`, `GTM_CONTAINER_ID`, `GA_MEASUREMENT_ID`, `SESSION_SECRET` or `COOKIE_SECRET` there for
+`PORT`, `GTM_CONTAINER_ID` (or `GOOGLE_TAG_MANAGER_KEY`), `GA_MEASUREMENT_ID`, `SESSION_SECRET` or `COOKIE_SECRET` there for
 local testing; existing shell environment variables take precedence. `.env` is git-ignored.
 Set `PORT=3001` to run another example alongside it. To try GTM and Google Analytics, set
-`GTM_CONTAINER_ID` and `GA_MEASUREMENT_ID` in `.env` or the shell; without them the example
-still runs without loading GTM. All three examples include nonce-based CSP and CSRF protection
+`GTM_CONTAINER_ID` (or `GOOGLE_TAG_MANAGER_KEY`) and `GA_MEASUREMENT_ID` in `.env` or the shell;
+without a container ID the example still runs without loading GTM. All three examples include nonce-based CSP and CSRF protection
 for the consent form. The Express session secret and Fastify cookie secret are generated at
 startup for local use; set `SESSION_SECRET` or `COOKIE_SECRET` to stable secrets when needed.
 Express's default in-memory session store is for examples only, not production deployments.
