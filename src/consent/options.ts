@@ -8,6 +8,7 @@ import { resolveGtmRestrictions } from '../gtm/restrictions.js'
 import { MESSAGE_PREFIX, createMessageResolver, resolveMessages } from './messages.js'
 import type {
   CookieDefinition,
+  CookieDefinitionOptions,
   CookieRemoval,
   GovUkAnalyticsConsentOptions,
   ResolvedOptions
@@ -166,7 +167,7 @@ export function resolveOptions(options: GovUkAnalyticsConsentOptions = {}): Reso
 
 function resolveCookieDefinitions(
   options: GovUkAnalyticsConsentOptions,
-  tagCookies: CookieDefinition[],
+  tagCookies: CookieDefinitionOptions[],
   categories: ResolvedOptions['categories'],
   defaultsContext: {
     cookieName: string
@@ -177,7 +178,7 @@ function resolveCookieDefinitions(
 ): CookieDefinition[] {
   const includeDefaults = options.includeDefaultCookies ?? true
   const defaults = includeDefaults ? defaultCookieDefinitions(defaultsContext) : []
-  const suppliedCookies: CookieDefinition[] = []
+  const suppliedCookies: CookieDefinitionOptions[] = []
 
   suppliedCookies.push(...tagCookies)
 
@@ -196,10 +197,12 @@ function resolveCookieDefinitions(
     if (
       typeof cookie.name !== 'string' ||
       cookie.name.trim() === '' ||
-      typeof cookie.purpose !== 'string' ||
-      cookie.purpose.trim() === '' ||
-      typeof cookie.expiry !== 'string' ||
-      cookie.expiry.trim() === '' ||
+      (cookie.purpose !== undefined && (typeof cookie.purpose !== 'string' || cookie.purpose.trim() === '')) ||
+      (cookie.expiry !== undefined && (typeof cookie.expiry !== 'string' || cookie.expiry.trim() === '')) ||
+      (cookie.purposeKey !== undefined && (typeof cookie.purposeKey !== 'string' || cookie.purposeKey.trim() === '')) ||
+      (cookie.expiryKey !== undefined && (typeof cookie.expiryKey !== 'string' || cookie.expiryKey.trim() === '')) ||
+      (cookie.purpose === undefined && cookie.purposeKey === undefined) ||
+      (cookie.expiry === undefined && cookie.expiryKey === undefined) ||
       category === undefined
     ) {
       throw new Error(`Invalid cookie definition: ${JSON.stringify(cookie)}`)
@@ -230,10 +233,16 @@ function resolveCookieDefinitions(
 
     const { purposeKey, expiryKey, providerKey, ...definition } = cookie
 
+    const purpose = purposeKey === undefined ? cookie.purpose : translate(purposeKey, cookie.purpose)
+    const expiry = expiryKey === undefined ? cookie.expiry : translate(expiryKey, cookie.expiry)
+    if (typeof purpose !== 'string' || purpose.trim() === '' || typeof expiry !== 'string' || expiry.trim() === '') {
+      throw new Error(`Invalid cookie definition: ${JSON.stringify(cookie)}`)
+    }
+
     return {
       ...definition,
-      purpose: purposeKey === undefined ? cookie.purpose : translate(purposeKey, cookie.purpose),
-      expiry: expiryKey === undefined ? cookie.expiry : translate(expiryKey, cookie.expiry),
+      purpose,
+      expiry,
       provider: providerKey === undefined ? cookie.provider : translate(providerKey, cookie.provider ?? ''),
       removeOnReject
     }
@@ -243,9 +252,9 @@ function resolveCookieDefinitions(
 /** A user-supplied entry overrides a default with the same `name`. */
 function mergeCookieDefinitions(
   defaults: CookieDefinition[],
-  overrides: CookieDefinition[]
-): CookieDefinition[] {
-  const byName = new Map<string, CookieDefinition>()
+  overrides: CookieDefinitionOptions[]
+): CookieDefinitionOptions[] {
+  const byName = new Map<string, CookieDefinitionOptions>()
 
   for (const cookie of [...defaults, ...overrides]) {
     byName.set(cookie.name, cookie)

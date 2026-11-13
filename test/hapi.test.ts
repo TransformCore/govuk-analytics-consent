@@ -50,11 +50,11 @@ beforeEach(async () => {
       gtmContainerId: 'GTM-ABC123',
       tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
       messages: {
-        en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept everything' } } },
-        cy: { 'govuk-analytics-consent': { banner: { acceptAll: 'Derbyn popeth' } } }
+        en: { govukAnalyticsConsent: { banner: { acceptAll: 'Accept everything' } } },
+        cy: { govukAnalyticsConsent: { banner: { acceptAll: 'Derbyn popeth' } } }
       },
       translate: (key, { request, response }) =>
-        key === 'govuk-analytics-consent.banner.acceptAll' &&
+        key === 'govukAnalyticsConsent.banner.acceptAll' &&
         (response as { variety?: string } | undefined)?.variety === 'view'
           ? (request as Hapi.Request).headers['x-consent-copy'] as string | undefined
           : undefined,

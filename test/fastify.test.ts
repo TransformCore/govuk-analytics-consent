@@ -28,11 +28,11 @@ beforeEach(async () => {
     gtmContainerId: 'GTM-ABC123',
     tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
     messages: {
-      en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept everything' } } },
-      cy: { 'govuk-analytics-consent': { banner: { acceptAll: 'Derbyn popeth' } } }
+      en: { govukAnalyticsConsent: { banner: { acceptAll: 'Accept everything' } } },
+      cy: { govukAnalyticsConsent: { banner: { acceptAll: 'Derbyn popeth' } } }
     },
     translate: (key, { request, response }) =>
-      key === 'govuk-analytics-consent.banner.acceptAll' && response !== undefined
+      key === 'govukAnalyticsConsent.banner.acceptAll' && response !== undefined
         ? (request as { headers: Record<string, unknown> }).headers['x-consent-copy'] as string | undefined
         : undefined,
     getCsrfFormFields: async (_request, response) => ({

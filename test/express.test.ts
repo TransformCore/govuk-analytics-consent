@@ -20,11 +20,11 @@ beforeEach(() => {
     gtmContainerId: 'GTM-ABC123',
     tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
     messages: {
-      en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept everything' } } },
-      cy: { 'govuk-analytics-consent': { banner: { acceptAll: 'Derbyn popeth' } } }
+      en: { govukAnalyticsConsent: { banner: { acceptAll: 'Accept everything' } } },
+      cy: { govukAnalyticsConsent: { banner: { acceptAll: 'Derbyn popeth' } } }
     },
     translate: (key, { request, response }) => {
-      if (key !== 'govuk-analytics-consent.banner.acceptAll') return undefined
+      if (key !== 'govukAnalyticsConsent.banner.acceptAll') return undefined
       return (response as express.Response).locals !== undefined
         ? (request as express.Request).header('x-consent-copy') : undefined
     }

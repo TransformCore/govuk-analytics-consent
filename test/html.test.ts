@@ -144,7 +144,7 @@ describe('renderConsentCookiesPage', () => {
     const html = cookiesPage({
       messages: {
         en: {
-          'govuk-analytics-consent': {
+          govukAnalyticsConsent: {
             categories: {
               essential: { title: 'Cwcis hanfodol', description: 'Mae hyn yn angenrheidiol.' },
               analytics: { title: 'Cwcis dadansoddi', description: 'Dadansoddiad.' }

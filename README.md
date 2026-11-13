@@ -247,7 +247,9 @@ with their category in GTM so each preference actually controls whether those ta
 Built-in English and Welsh copy works without an i18n library. Use `getLanguage` to select a
 service language, `messages` for nested overrides, or a request-bound `translate` callback to use
 your host project's i18n catalogue. See the [localisation guide](docs/localisation.md) for
-configuration, fallback behaviour, and custom tag and cookie messages.
+configuration, fallback behaviour, and custom tag and cookie messages, including a
+[single-key override example](docs/localisation.md#overriding-messages) and the
+[complete built-in key reference](docs/localisation.md#built-in-key-reference).
 
 ## How it works
 
@@ -396,7 +398,7 @@ All optional.
 | `cookiesPageUrl` | none | Renders the banner's "View cookies" link; same-origin paths only |
 | `consentWaitForUpdate` | `500` | Consent Mode `wait_for_update` in ms; `false` omits it |
 | `serviceName` | `this service` | Used in the banner heading |
-| `messages` | Built-in English/Welsh copy | Nested overrides per language under `govuk-analytics-consent`; an absent Welsh leaf keeps its Welsh default rather than using an English override. For host-only locales, configured English copy is the fallback before built-in English. See [Localisation](docs/localisation.md#lookup-and-fallback-contract) |
+| `messages` | Built-in English/Welsh copy | Nested overrides per language under `govukAnalyticsConsent`; an absent Welsh leaf keeps its Welsh default rather than using an English override. For host-only locales, configured English copy is the fallback before built-in English. See [Localisation](docs/localisation.md#lookup-and-fallback-contract) |
 | `getLanguage` | `Accept-Language`, then English | `(request, response?) => string or undefined`, sync or async; called per request and takes priority over browser preferences. Returning `undefined` uses browser negotiation; errors propagate |
 | `translate` | none | Synchronous per-request `(key, { language, request, response, values }) => string or undefined`; host result takes priority over nested `messages`. Return `undefined` or the key itself when missing; an empty string is a valid translation. Promises and global locale mutation are unsupported. See [Localisation](docs/localisation.md#using-a-host-translator) |
 | `logger` | `console` | Host logger with `debug`, `info`, `warn`, and `error` methods accepting `(message, ...meta)`. Standard structured loggers such as Pino or Winston can be passed directly. |

@@ -48,9 +48,9 @@ const consent = createGovUkAnalyticsConsent({
   tags: ['google-analytics'],
   gtmAllowlist: ['auto'],
   cookies: [
-    { name: 'session_id', categoryId: 'essential', purpose: 'Keeps you signed in', expiry: 'Session' },
-    { name: 'crumb', categoryId: 'essential', purpose: 'Protects forms against cross-site request forgery to keep your data secure', expiry: 'Session' },
-    { name: languageCookieName, categoryId: 'essential', purpose: 'Remembers your language choice', expiry: '1 year' },
+    { name: 'session_id', categoryId: 'essential', purposeKey: 'govukAnalyticsConsent.cookies.session.purpose', expiryKey: 'govukAnalyticsConsent.cookies.session.expiry' },
+    { name: 'crumb', categoryId: 'essential', purposeKey: 'govukAnalyticsConsent.cookies.csrf.purpose', expiryKey: 'govukAnalyticsConsent.cookies.session.expiry' },
+    { name: languageCookieName, categoryId: 'essential', purposeKey: 'govukAnalyticsConsent.cookies.language.purpose', expiry: '1 year' },
     {
       name: 'example_preferences',
       categoryId: 'personalization',

@@ -31,6 +31,76 @@ afterEach(() => {
 })
 
 describe('resolveOptions', () => {
+  it('localizes session copy without changing cookie identifiers and supports overrides', async () => {
+    const options = resolveOptions({
+      cookies: [{
+        name: 'session_id', categoryId: 'essential',
+        purposeKey: 'govukAnalyticsConsent.cookies.session.purpose',
+        expiryKey: 'govukAnalyticsConsent.cookies.session.expiry'
+      }, {
+        name: 'csrf', categoryId: 'essential',
+        purposeKey: 'govukAnalyticsConsent.cookies.csrf.purpose',
+        expiryKey: 'govukAnalyticsConsent.cookies.session.expiry'
+      }, {
+        name: 'language', categoryId: 'essential',
+        purposeKey: 'govukAnalyticsConsent.cookies.language.purpose', expiry: '1 year'
+      }]
+    })
+    for (const language of ['en', 'cy']) {
+      const { expiry, purpose } = getDefaultMessages(language).cookies.session
+      const context = await createConsentContext(options, {
+        request: { headers: { 'accept-language': language } }
+      })
+      expect(context.cookies.find((cookie) => cookie.name === 'session_id')).toMatchObject({
+        name: 'session_id', categoryId: 'essential', expiry, purpose
+      })
+      expect(context.cookiesPage).toContain(expiry)
+      expect(context.cookiesPage).toContain(purpose)
+      expect(context.cookies.find((cookie) => cookie.name === 'csrf')).toMatchObject({
+        name: 'csrf', categoryId: 'essential', expiry, purpose: getDefaultMessages(language).cookies.csrf.purpose
+      })
+      expect(context.cookies.find((cookie) => cookie.name === 'language')).toMatchObject({
+        name: 'language', categoryId: 'essential', expiry: '1 year', purpose: getDefaultMessages(language).cookies.language.purpose
+      })
+    }
+    const overridden = resolveOptions({
+      cookies: [{
+        name: 'session_id', categoryId: 'essential', purpose: 'Session fallback',
+        purposeKey: 'govukAnalyticsConsent.cookies.session.purpose',
+        expiry: 'Session', expiryKey: 'govukAnalyticsConsent.cookies.session.expiry'
+      }],
+      messages: { en: { govukAnalyticsConsent: { cookies: { session: {
+        expiry: 'Until you close your browser', purpose: 'Custom session purpose'
+      } } } } }
+    })
+    expect(overridden.cookies.find((cookie) => cookie.name === 'session_id')?.expiry)
+      .toBe('Until you close your browser')
+    expect(overridden.cookies.find((cookie) => cookie.name === 'session_id')?.purpose)
+      .toBe('Custom session purpose')
+  })
+
+  it('requires key-only cookie copy to resolve at registration and for each language', async () => {
+    const cookie = {
+      name: 'custom_id', categoryId: 'essential',
+      purposeKey: 'govukAnalyticsConsent.cookies.custom.purpose',
+      expiryKey: 'govukAnalyticsConsent.cookies.custom.expiry'
+    }
+    expect(() => resolveOptions({ cookies: [cookie] })).toThrow('Missing translation for "govukAnalyticsConsent.cookies.custom.purpose"')
+    const options = resolveOptions({
+      cookies: [cookie],
+      messages: {
+        en: { govukAnalyticsConsent: { cookies: { custom: { purpose: 'Purpose', expiry: 'Session' } } } },
+        cy: { govukAnalyticsConsent: { cookies: { custom: { purpose: 'Pwrpas', expiry: 'Sesiwn' } } } }
+      }
+    })
+    const context = await createConsentContext(options, { request: { headers: { 'accept-language': 'cy' } } })
+    expect(context.cookies.find((item) => item.name === 'custom_id')).toMatchObject({ purpose: 'Pwrpas', expiry: 'Sesiwn' })
+    expect(() => resolveOptions({
+      cookies: [cookie],
+      messages: { en: { govukAnalyticsConsent: { cookies: { custom: { purpose: '', expiry: 'Session' } } } } }
+    })).toThrow('Invalid cookie definition')
+  })
+
   it('makes audit publishing opt-in and exposes only resolved declarations', () => {
     expect(resolveOptions().auditEnabled).toBe(false)
     expect(() => resolveOptions({ auditEnabled: 'true' as unknown as boolean })).toThrow('auditEnabled')
@@ -52,20 +122,20 @@ describe('resolveOptions', () => {
     const options = resolveOptions({
       tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
       cookies: [
-        { name: 'custom_id', categoryId: 'analytics', purpose: 'Default purpose', purposeKey: 'govuk-analytics-consent.cookies.custom.purpose', expiry: '1 day', expiryKey: 'govuk-analytics-consent.cookies.custom.expiry', provider: 'Example provider', providerKey: 'govuk-analytics-consent.cookies.custom.provider' },
-        (_messages, translate) => [{ name: 'factory_id', categoryId: 'analytics', purpose: translate('govuk-analytics-consent.cookies.factory.purpose', 'Factory fallback'), expiry: 'Session' }]
+        { name: 'custom_id', categoryId: 'analytics', purpose: 'Default purpose', purposeKey: 'govukAnalyticsConsent.cookies.custom.purpose', expiry: '1 day', expiryKey: 'govukAnalyticsConsent.cookies.custom.expiry', provider: 'Example provider', providerKey: 'govukAnalyticsConsent.cookies.custom.provider' },
+        (_messages, translate) => [{ name: 'factory_id', categoryId: 'analytics', purpose: translate('govukAnalyticsConsent.cookies.factory.purpose', 'Factory fallback'), expiry: 'Session' }]
       ],
       translate: (key, { request, response, values }) => {
         expect(response).toBe((request as { reply: unknown }).reply)
-        if (key === 'govuk-analytics-consent.banner.title') return `Cookies: ${values?.serviceName ?? '{{serviceName}}'}`
-        if (key === 'govuk-analytics-consent.cookies.categoryQuestion') return 'Accept {{label}} <cookies>?'
-        if (key === 'govuk-analytics-consent.tags.google-analytics.description') return 'Description from host'
+        if (key === 'govukAnalyticsConsent.banner.title') return `Cookies: ${values?.serviceName ?? '{{serviceName}}'}`
+        if (key === 'govukAnalyticsConsent.cookies.categoryQuestion') return 'Accept {{label}} <cookies>?'
+        if (key === 'govukAnalyticsConsent.tags.google-analytics.description') return 'Description from host'
         return (request as { copy: Record<string, string> }).copy[key]
       }
     })
     const french = { reply: {}, headers: { 'accept-language': 'fr' }, copy: {
-      'govuk-analytics-consent.cookies.custom.purpose': 'But en francais',
-      'govuk-analytics-consent.cookies.factory.purpose': 'Fabrique'
+      'govukAnalyticsConsent.cookies.custom.purpose': 'But en francais',
+      'govukAnalyticsConsent.cookies.factory.purpose': 'Fabrique'
     } }
     const welsh = { reply: {}, headers: { 'accept-language': 'cy' }, copy: {} }
     const [frContext, cyContext] = await Promise.all([
@@ -97,8 +167,8 @@ describe('resolveOptions', () => {
     }
     const options = resolveOptions({
       logger,
-      messages: { en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept here' } } }, fr: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accepter' } } } },
-      cookies: [{ name: 'custom_id', categoryId: 'analytics', purpose: 'Purpose', purposeKey: 'govuk-analytics-consent.cookies.custom.purpose', expiry: 'Session' }]
+      messages: { en: { govukAnalyticsConsent: { banner: { acceptAll: 'Accept here' } } }, fr: { govukAnalyticsConsent: { banner: { acceptAll: 'Accepter' } } } },
+      cookies: [{ name: 'custom_id', categoryId: 'analytics', purpose: 'Purpose', purposeKey: 'govukAnalyticsConsent.cookies.custom.purpose', expiry: 'Session' }]
     })
     const context = await createConsentContext(options, { request: { headers: { 'accept-language': 'fr' } } })
 
@@ -107,7 +177,7 @@ describe('resolveOptions', () => {
     expect(options.logger).toBe(logger)
     expect(warnings).toEqual([expect.stringContaining('"fr"')])
     expect(resolveMessages('cy', {
-      en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept here' } } }
+      en: { govukAnalyticsConsent: { banner: { acceptAll: 'Accept here' } } }
     }).banner.acceptAll).toBe(defaultMessages.cy.banner.acceptAll)
   })
 
@@ -128,15 +198,15 @@ describe('resolveOptions', () => {
         }]
       }],
       translate: (key) => {
-        if (key.startsWith('govuk-analytics-consent.tags.my-tag.')) keys.push(key)
+        if (key.startsWith('govukAnalyticsConsent.tags.my-tag.')) keys.push(key)
         return key.endsWith('.description') ? 'Translated tag' : undefined
       }
     })
     const context = await createConsentContext(options, { request: { headers: { 'accept-language': 'en' } } })
 
     expect(keys).toEqual([
-      'govuk-analytics-consent.tags.my-tag.cookies.my_tag.purpose',
-      'govuk-analytics-consent.tags.my-tag.description'
+      'govukAnalyticsConsent.tags.my-tag.cookies.my_tag.purpose',
+      'govukAnalyticsConsent.tags.my-tag.description'
     ])
     expect(context.tagDescriptions[0]?.text).toBe('Translated tag')
     expect(context.cookies.find((cookie) => cookie.name === 'my_tag')?.purpose).toBe('Purpose fallback')
@@ -145,7 +215,7 @@ describe('resolveOptions', () => {
   it('localizes categories and built-in cookie descriptions per request', async () => {
     const options = resolveOptions({
       tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
-      messages: { cy: { 'govuk-analytics-consent': {
+      messages: { cy: { govukAnalyticsConsent: {
         categories: { analytics: { title: 'Dadansoddi' } },
         tags: { 'google-analytics': { cookies: { ga: { purpose: 'Cyfrif ymweliadau' } } } }
       } } }
@@ -203,8 +273,8 @@ describe('resolveOptions', () => {
 
   it('applies only the selected language overrides and falls back to overridden English', () => {
     const messages = {
-      en: { 'govuk-analytics-consent': { banner: { acceptAll: 'Accept' } } },
-      cy: { 'govuk-analytics-consent': { banner: { acceptAll: 'Derbyn' } } }
+      en: { govukAnalyticsConsent: { banner: { acceptAll: 'Accept' } } },
+      cy: { govukAnalyticsConsent: { banner: { acceptAll: 'Derbyn' } } }
     }
 
     expect(resolveMessages('cy', messages).banner.acceptAll).toBe('Derbyn')
@@ -269,7 +339,7 @@ describe('resolveOptions', () => {
     const resolved = resolveOptions({
       messages: {
         en: {
-          'govuk-analytics-consent': {
+          govukAnalyticsConsent: {
             banner: { acceptAll: 'Accept all', rejectAll: 'Reject all' },
             cookies: { changeSettings: 'Manage cookies' }
           }
@@ -344,7 +414,7 @@ describe('cookies table defaults', () => {
       tags: [googleAnalytics({ measurementId: 'G-ABC123' })],
       messages: {
         en: {
-          'govuk-analytics-consent': {
+          govukAnalyticsConsent: {
             tags: {
               'google-analytics': {
                 cookies: {

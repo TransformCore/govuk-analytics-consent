@@ -26,6 +26,12 @@ export const defaultMessages = {
       yes: 'Yes',
       no: 'No',
       consent: { purpose: 'Saves your cookie consent settings' },
+      session: {
+        expiry: 'Session',
+        purpose: 'Remembers your session as you move between pages'
+      },
+      csrf: { purpose: 'Protects forms against cross-site request forgery' },
+      language: { purpose: 'Remembers your language choice' },
       table: { name: 'Name', purpose: 'Purpose', expiry: 'Expires' }
     },
     categories: {
@@ -106,6 +112,12 @@ export const defaultMessages = {
       yes: 'Ie',
       no: 'Na',
       consent: { purpose: 'Yn cadw eich gosodiadau cwcis' },
+      session: {
+        expiry: 'Sesiwn',
+        purpose: 'Yn cofio eich sesiwn wrth i chi symud rhwng tudalennau'
+      },
+      csrf: { purpose: 'Yn diogelu ffurflenni rhag ffugio ceisiadau traws-safle' },
+      language: { purpose: 'Yn cofio eich dewis iaith' },
       table: { name: 'Enw', purpose: 'Pwrpas', expiry: 'Yn dod i ben' }
     },
     categories: {
@@ -165,9 +177,9 @@ export const defaultMessages = {
 
 export type LanguageCode = keyof typeof defaultMessages
 export type MessageTree = { [key: string]: string | MessageTree }
-export type LocalizedMessages = Partial<Record<string, { 'govuk-analytics-consent'?: MessageTree }>>
+export type LocalizedMessages = Partial<Record<string, { govukAnalyticsConsent?: MessageTree }>>
 
-export const MESSAGE_PREFIX = 'govuk-analytics-consent.'
+export const MESSAGE_PREFIX = 'govukAnalyticsConsent.'
 
 export interface TranslationContext {
   language: string
@@ -197,7 +209,7 @@ export function createMessageResolver(
     let entry: string | MessageTree | undefined
 
     for (const locale of locales) {
-      entry = messages[locale]?.['govuk-analytics-consent']
+      entry = messages[locale]?.govukAnalyticsConsent
 
       for (const part of parts) {
         entry = entry !== undefined && typeof entry !== 'string' && Object.hasOwn(entry, part)
@@ -207,8 +219,14 @@ export function createMessageResolver(
       if (typeof entry === 'string') break
     }
 
+    let builtIn: string | MessageTree | undefined = baseLanguage === 'cy' ? defaultMessages.cy : defaultMessages.en
+    for (const part of parts) {
+      builtIn = builtIn !== undefined && typeof builtIn !== 'string' && Object.hasOwn(builtIn, part)
+        ? builtIn[part] : undefined
+    }
+
     const selected = translated === undefined || translated === key
-      ? typeof entry === 'string' ? entry : fallback
+      ? typeof entry === 'string' ? entry : typeof builtIn === 'string' ? builtIn : fallback
       : translated
 
     if (selected === undefined) {

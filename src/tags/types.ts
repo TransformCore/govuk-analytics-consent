@@ -7,7 +7,7 @@ export interface ConsentTag {
   cookies: CookieDefinitionFactory
   csp: CspDirectives
   /** Plain text shown above the tag's cookie rows on the cookies page. */
-  /** The translator accepts keys relative to `govuk-analytics-consent.tags.<id>`. */
+  /** The translator accepts keys relative to `govukAnalyticsConsent.tags.<id>`. */
   description?: string | ((messages: ConsentMessages, translate: TranslateMessage) => string)
   /** GTM tag type IDs or classes added by `gtmAllowlist: 'auto'`, e.g. `['hjtc']`. */
   gtmTypes?: readonly string[]
